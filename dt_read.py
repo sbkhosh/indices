@@ -31,9 +31,6 @@ class DataProcessor():
     def process(self):
         file_in = self.conf.get('file_in')
         use_cols = self.conf.get('use_cols')
-        start_date = self.conf.get('start_date')
-        end_date = self.conf.get('end_date')
-        offset = self.conf.get('offset')
 
         self.data = pd.read_excel('/'.join((self.input_directory,file_in)),usecols=use_cols,header=None,skiprows=[0,1,2])
         
@@ -58,18 +55,19 @@ class DataProcessor():
         nikkei_index = nikkei_index.rename(columns=nikkei_index.iloc[0]).drop(nikkei_index.index[0]).set_index('Dates')
         spmini_index = spmini_index.rename(columns=spmini_index.iloc[0]).drop(spmini_index.index[0]).set_index('Dates')
 
+        # timezone of downloaded file is GMT-6 then convert to UTC
         hk_index.index = hk_index.index.tz_localize('Etc/GMT-6').tz_convert('UTC')
         nikkei_index.index = nikkei_index.index.tz_localize('Etc/GMT-6').tz_convert('UTC')
         spmini_index.index = spmini_index.index.tz_localize('Etc/GMT-6').tz_convert('UTC')
+
+        hk_index['H-L'] = hk_index['High'] - hk_index['Low']
+        nikkei_index['H-L'] = nikkei_index['High'] - nikkei_index['Low']
+        spmini_index['H-L'] = spmini_index['High'] - spmini_index['Low']
         
         self.hk_index = hk_index
         self.nikkei_index = nikkei_index
         self.spmini_index = spmini_index
 
-    @Helper.timing
-    def process_volume(self):
-        pass
-        
     def write_to(self,name,flag):
         filename = os.path.join(self.output_directory,name)
         try:

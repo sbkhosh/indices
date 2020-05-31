@@ -10,6 +10,10 @@ from dt_read import DataProcessor
 from dt_model import MeanRevertStrat
 from pandas.plotting import register_matplotlib_converters
 
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+
 warnings.filterwarnings('ignore',category=FutureWarning)
 pd.options.mode.chained_assignment = None 
 register_matplotlib_converters()
@@ -29,9 +33,3 @@ if __name__ == '__main__':
     obj_0 = DataProcessor('data_in','data_out','conf_model.yml')
     obj_0.read_prm()
     obj_0.process()
-
-    print(obj_0.hk_index)
-    print(obj_0.nikkei_index)
-    print(obj_0.spmini_index)
-
-    
