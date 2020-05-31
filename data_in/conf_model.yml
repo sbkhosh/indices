@@ -1,0 +1,5 @@
+file_in: 'hknikkei.xlsx'
+use_cols: "A:F,H:M,P:U"
+offset: 5
+
+
