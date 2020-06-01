@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import numpy as np
 import os
 import pandas as pd
 import string
@@ -63,11 +64,19 @@ class DataProcessor():
         hk_index['H-L'] = hk_index['High'] - hk_index['Low']
         nikkei_index['H-L'] = nikkei_index['High'] - nikkei_index['Low']
         spmini_index['H-L'] = spmini_index['High'] - spmini_index['Low']
+
+        hk_index = hk_index.astype(float)
+        nikkei_index = nikkei_index.astype(float)
+        spmini_index = spmini_index.astype(float)
         
+        hk_index.replace([np.inf, -np.inf, 'inf', '-inf'], np.nan).dropna(inplace=True)
+        nikkei_index.replace([np.inf, -np.inf, 'inf', '-inf'], np.nan).dropna(inplace=True)
+        spmini_index.replace([np.inf, -np.inf, 'inf', '-inf'], np.nan).dropna(inplace=True)
+
         self.hk_index = hk_index
         self.nikkei_index = nikkei_index
         self.spmini_index = spmini_index
-
+                
     def write_to(self,name,flag):
         filename = os.path.join(self.output_directory,name)
         try:
