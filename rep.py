@@ -32,6 +32,7 @@ from scipy import stats
 from scipy.cluster.hierarchy import cophenet, fcluster
 from scipy.spatial.distance import pdist
 from statsmodels.sandbox.regression.predstd import wls_prediction_std
+from plotly.figure_factory import create_2d_density
 
 warnings.filterwarnings('ignore',category=FutureWarning)
 pd.options.mode.chained_assignment = None 
@@ -63,7 +64,11 @@ def get_data_all():
     return(obj_reader.hk_index, obj_reader.nikkei_index, obj_reader.spmini_index)
 
 df_hk, df_nikkei, df_spmini500 = get_data_all()
-    
+
+def zoom(layout, xrange):
+    in_view = df.loc[fig.layout.xaxis.range[0]:fig.layout.xaxis.range[1]]
+    fig.layout.yaxis.range = [in_view.High.min() - 10, in_view.High.max() + 10]
+
 def movingaverage(df, window_size='30T'):
     return(df.rolling(window=window_size).mean())
 
@@ -197,7 +202,10 @@ def candlestick_plot(df,index_val):
     fig['layout']['margin'] = dict(t=40, b=40, r=40, l=40)
     fig['layout']['width'] = 1800
     fig['layout']['height'] = 1200
-        
+    in_view = df.loc[fig['layout']['xaxis'].range[0]:fig['layout']['xaxis'].range[1]]
+    fig['layout']['yaxis']['range'] = [in_view.High.min() - 10, in_view.High.max() + 10]
+    fig.layout.on_change(zoom, 'xaxis.range')
+
     rangeselector=dict(
         visibe = True,
         x = 0, y = 0.9,
@@ -290,7 +298,7 @@ def get_layout_1():
     html_res = \
     html.Div([
               html.Div([
-                        html.Div(html.P([html.Br(),html.H5(html.B('For each chosen index, different metrics are shown. The moving average represented in the graph is based on the Close value. It is also possible to show for different backward windows. We notice that the most active sessions start from Mid-March for Nikkei225 and SP500 contracts and from beginning of May for Hang Seng')),html.Br(),html.H5(html.B('For Nikkei, the daily trend in terms of volume activity shows a peak of at the start of the trading session and gradual decrease towards the end of the day.')),html.Br(),html.H5(html.B('For Hang Seng, the daily trend in terms of volume activity shows a parabolic evolution from the start to the end of the day')),html.Br(),html.H5(html.B('For SP500, the daily trend in terms of volume activity shows a parabolic evolution from the start to the end of the day'))]), style=STYLE_8),
+                        html.Div(html.P([html.Br(),html.H5(html.B('For each chosen index, different metrics are shown. The moving average represented in the graph is based on the Close value. It is also possible to show for different backward windows. We notice that the most active sessions start from Mid-March for Nikkei225 and SP500 contracts and from beginning of May for Hang Seng')),html.Br(),html.H5(html.B('For Nikkei, the daily trend in terms of volume activity shows, during each cycle, the same pattern: a peak and gradual decrease')),html.Br(),html.H5(html.B('For Hang Seng, the daily trend in terms of volume activity shows a parabolic evolution during each cycle')),html.Br(),html.H5(html.B('For SP500, the daily trend in terms of volume activity shows a net uniform trend during half of a 24hr cycle and lesser activity during the other half'))]), style=STYLE_8),
                         html.Div([
                                   html.Div(html.H4('Index choice'),style=STYLE_6),
                                   dcc.Dropdown(
@@ -484,112 +492,6 @@ def get_layout_5():
               ])
     return(html_res)
 
-# ##########################################################################################################################################################################################
-# #                                                                                        layout_6
-# ##########################################################################################################################################################################################
-# def get_layout():
-#     html_res = \
-#     html.Div([
-#         html.Div([
-#             html.Div(html.H6('Cluster Method'),style=STYLE_6),
-#             dcc.Dropdown(
-#                 id='method-dropdown',
-#                 options=[{'label': i, 'value': i} for i in ['single','complete','average','weighted','centroid','median','ward']],
-#                 value='ward',
-#                 style=STYLE_2
-#             )
-#             ],style=STYLE_3),
-#         html.Div([
-#             html.Div(html.H6('Cluster Metric'),style=STYLE_6),
-#             dcc.Dropdown(
-#                 id='metric-dropdown',
-#                 options=[{'label': i, 'value': i} for i in ['euclidean','correlation','cosine','dtw']],
-#                 value='euclidean',
-#                 style=STYLE_2
-#             )
-#             ],style=STYLE_3),
-#         html.Div([
-#             html.Div(html.H6('Cluster max #'),style=STYLE_6),
-#             dcc.Dropdown(
-#                 id='max-cluster-dropdown',
-#                 options=[{'label': i, 'value': i} for i in range(int(params['max_cluster_rep']))],
-#                 value='17',
-#                 style=STYLE_2
-#             )
-#             ],style=STYLE_3),
-#         html.Div([
-#             html.Div(html.P([html.Br(),html.H2(html.B('Cluster dendrogram - Clustered time series')),html.Br()]), style=STYLE_5),
-#             html.Img(id = 'cluster-plot',
-#                            src = '',
-#                            style=STYLE_4)
-#         ]),
-#         html.Div([
-#             html.Div(html.P([html.Br(),html.H2(html.B('Clustered time series')),html.Br()]), style=STYLE_5),
-#             html.Img(id = 'qty-plot',
-#                            src = '',
-#                            style=STYLE_4)
-#         ]),
-#         html.Div([
-#             html.Div(html.P([html.Br(),html.H2(html.B('Cumulative return')),html.Br()]), style=STYLE_5),
-#             html.Div(html.H6('Cluster Selected'),style=STYLE_6),
-#             dcc.Dropdown(
-#                 id='selected-cluster-dropdown',
-#                 value='5',
-#                 style=STYLE_2
-#             )
-#         ]),
-#         html.Div([
-#             dcc.Graph(
-#                 id = 'qty-uniq-plot',
-#                 style=STYLE_4)
-#         ]),
-#         html.Div(
-#             id='cluster-table',
-#             className='tableDiv'
-#         ),
-#         html.Div([
-#             html.Div(html.P([html.Br(),html.H2(html.B('Correlation matrix from selected cluster')),html.Br()]), style=STYLE_5),
-#         ]),
-#         html.Div([
-#             dcc.Graph(
-#                 id = 'corr-uniq-plot',
-#                 style=STYLE_7)
-#         ]),
-#         html.Div([
-#             html.Div(html.P([html.Br(),html.H2(html.B('Pairs plot from selected cluster')),html.Br()]), style=STYLE_5),
-#             html.Img(id = 'pairplot-uniq-plot',
-#                            src = '',
-#                            style=STYLE_4)
-#         ]),
-#         html.Div([
-#             html.Div(html.P([html.Br(),html.H2(html.B('Dynamic time warping from selected cluster')),html.Br()]), style=STYLE_5),
-#             html.Img(id = 'dtws-uniq-plot',
-#                            src = '',
-#                            style=STYLE_4)
-#         ]),
-#         html.Div(html.P([html.Br(),html.H2(html.B('Cluster counts')),html.Br()]), style=STYLE_5),
-#         html.Div([html.Img(id = 'clusters-hist-plot',
-#                            src = '',
-#                            style=STYLE_4)
-#         ]),
-#         html.Div(html.P([html.Br(),html.H2(html.B('Components mapping from dendrogram')),html.Br()]), style=STYLE_5),
-#         html.Div([html.Img(id = 'clusters-map-text-plot',
-#                            src = '',
-#                            style=STYLE_4)
-#         ]),
-#         html.Div(html.P([html.Br(),html.H2(html.B('Mapping from selected cluster')),html.Br()]), style=STYLE_5),
-#         html.Div([html.Img(id = 'clusters-uniq-plot',
-#                            src = '',
-#                            style=STYLE_4)
-#         ]),
-#         html.Div(html.P([html.Br(),html.H2(html.B('Distributions of time series from selected cluster')),html.Br()]), style=STYLE_5),
-#         html.Div([html.Img(id = 'klb-uniq-plot',
-#                            src = '',
-#                            style=STYLE_4)
-#         ]),
-#     ])
-#     return(html_res)
-    
 ###################
 # core of the app #  
 ###################
@@ -1148,6 +1050,8 @@ def update_fig_5(vthreshold):
 
     df_all = pd.concat([df_hk_select,df_nikkei_select,df_spmini500_select],axis=1).dropna()
 
+    print(df_all[[el for el in df_all.columns if 'Close' in el]].pct_change().dropna())
+    
     # correlation
     df_corr_all = df_all[[el for el in df_all.columns if 'H-L' not in el]]    
     fig_corr, corr_matrix = data_pairheat(df_corr_all)
@@ -1165,7 +1069,7 @@ def update_fig_5(vthreshold):
     fig_heatmap = data_heatmap(df_all[[el for el in selected_headers if 'H-L' not in el]].pct_change())
     
     return(fig_corr,df_res_table,fig_heatmap,fig_corr_pair)
-        
+
 ####################################################################################################################################################################################
 #                                                                                            page display                                                                          # 
 ####################################################################################################################################################################################
