@@ -202,9 +202,6 @@ def candlestick_plot(df,index_val):
     fig['layout']['margin'] = dict(t=40, b=40, r=40, l=40)
     fig['layout']['width'] = 1800
     fig['layout']['height'] = 1200
-    in_view = df.loc[fig['layout']['xaxis'].range[0]:fig['layout']['xaxis'].range[1]]
-    fig['layout']['yaxis']['range'] = [in_view.High.min() - 10, in_view.High.max() + 10]
-    fig.layout.on_change(zoom, 'xaxis.range')
 
     rangeselector=dict(
         visibe = True,
@@ -278,6 +275,7 @@ def nav_menu():
             dbc.NavLink("H-L & Volume", href='/page-3', id='page-3-link', style=STYLE_1),
             dbc.NavLink("H-L & Volatility", href='/page-4', id='page-4-link', style=STYLE_1),
             dbc.NavLink("Correlations", href='/page-5', id='page-5-link', style=STYLE_1),
+            # dbc.NavLink("Statistics", href='/page-6', id='page-6-link', style=STYLE_1),
         ],
         pills=True
         )
@@ -492,6 +490,162 @@ def get_layout_5():
               ])
     return(html_res)
 
+# ##########################################################################################################################################################################################
+# #                                                                                        layout_6
+# ##########################################################################################################################################################################################
+# def get_layout_6():
+#     html_res = \
+#     html.Div([   
+#               html.Div([
+#                         html.Div(html.P([html.Br(),html.H5(html.B()),html.Br(),html.H5(html.B()),html.Br(),html.H5(html.B())]), style=STYLE_8)]),
+#               html.Div([
+#                         html.Div([
+#                                   html.Div(html.H4('Pair 1'),style=STYLE_6),
+#                                   dcc.Dropdown(
+#                                       id='ohlc-dd-pair1',
+#                                       options=[{'label': i, 'value': i} for i in ['Open_hk','High_hk','Low_hk','Close_hk','Open_nk','High_nk','Low_nk','Close_nk','Open_us','High_us','Low_us','Close_us']],
+#                                       value='Open_hk',
+#                                       style=STYLE_2
+#                                       ),
+#                                   html.Div(html.H4('Pair 2'),style=STYLE_6),
+#                                   dcc.Dropdown(
+#                                       id='ohlc-dd-pair2',
+#                                       options=[{'label': i, 'value': i} for i in ['Open_hk','High_hk','Low_hk','Close_hk','Open_nk','High_nk','Low_nk','Close_nk','Open_us','High_us','Low_us','Close_us']],
+#                                       value='Open_nk',
+#                                       style=STYLE_2
+#                                       ),
+#                                       ],style=STYLE_3),
+#                                   html.Div(html.H4('Date_1'),style=STYLE_6),
+#                                   dcc.Dropdown(
+#                                       id='ohlc-dd-day1',
+#                                       options=[{'label': i, 'value': i} for i in list(range(10,24))],
+#                                       value=10,
+#                                       style=STYLE_2
+#                                       ),
+#                                   html.Div(html.H4('Date_2'),style=STYLE_6),
+#                                   dcc.Dropdown(
+#                                       id='ohlc-dd-day2',
+#                                       options=[{'label': i, 'value': i} for i in list(range(10,24))],
+#                                       value=10,
+#                                       style=STYLE_2
+#                                       ),
+#                                       ],style=STYLE_3),
+#                         html.Div(html.P([html.Br(),html.H2(html.B('Statistics')),html.Br()]), style=STYLE_8),
+#                         html.Div([
+#                                   dcc.Graph(
+#                                       id = 'ohlc-dist',
+#                                       style=STYLE_4
+#                                       ),
+#                         ]),
+#               ])
+#     return(html_res)
+    
+# ##########################################################################################################################################################################################
+# #                                                                                        layout_6
+# ##########################################################################################################################################################################################
+# def get_layout():
+#     html_res = \
+#     html.Div([
+#         html.Div([
+#             html.Div(html.H6('Cluster Method'),style=STYLE_6),
+#             dcc.Dropdown(
+#                 id='method-dropdown',
+#                 options=[{'label': i, 'value': i} for i in ['single','complete','average','weighted','centroid','median','ward']],
+#                 value='ward',
+#                 style=STYLE_2
+#             )
+#             ],style=STYLE_3),
+#         html.Div([
+#             html.Div(html.H6('Cluster Metric'),style=STYLE_6),
+#             dcc.Dropdown(
+#                 id='metric-dropdown',
+#                 options=[{'label': i, 'value': i} for i in ['euclidean','correlation','cosine','dtw']],
+#                 value='euclidean',
+#                 style=STYLE_2
+#             )
+#             ],style=STYLE_3),
+#         html.Div([
+#             html.Div(html.H6('Cluster max #'),style=STYLE_6),
+#             dcc.Dropdown(
+#                 id='max-cluster-dropdown',
+#                 options=[{'label': i, 'value': i} for i in range(int(params['max_cluster_rep']))],
+#                 value='17',
+#                 style=STYLE_2
+#             )
+#             ],style=STYLE_3),
+#         html.Div([
+#             html.Div(html.P([html.Br(),html.H2(html.B('Cluster dendrogram - Clustered time series')),html.Br()]), style=STYLE_5),
+#             html.Img(id = 'cluster-plot',
+#                            src = '',
+#                            style=STYLE_4)
+#         ]),
+#         html.Div([
+#             html.Div(html.P([html.Br(),html.H2(html.B('Clustered time series')),html.Br()]), style=STYLE_5),
+#             html.Img(id = 'qty-plot',
+#                            src = '',
+#                            style=STYLE_4)
+#         ]),
+#         html.Div([
+#             html.Div(html.P([html.Br(),html.H2(html.B('Cumulative return')),html.Br()]), style=STYLE_5),
+#             html.Div(html.H6('Cluster Selected'),style=STYLE_6),
+#             dcc.Dropdown(
+#                 id='selected-cluster-dropdown',
+#                 value='5',
+#                 style=STYLE_2
+#             )
+#         ]),
+#         html.Div([
+#             dcc.Graph(
+#                 id = 'qty-uniq-plot',
+#                 style=STYLE_4)
+#         ]),
+#         html.Div(
+#             id='cluster-table',
+#             className='tableDiv'
+#         ),
+#         html.Div([
+#             html.Div(html.P([html.Br(),html.H2(html.B('Correlation matrix from selected cluster')),html.Br()]), style=STYLE_5),
+#         ]),
+#         html.Div([
+#             dcc.Graph(
+#                 id = 'corr-uniq-plot',
+#                 style=STYLE_7)
+#         ]),
+#         html.Div([
+#             html.Div(html.P([html.Br(),html.H2(html.B('Pairs plot from selected cluster')),html.Br()]), style=STYLE_5),
+#             html.Img(id = 'pairplot-uniq-plot',
+#                            src = '',
+#                            style=STYLE_4)
+#         ]),
+#         html.Div([
+#             html.Div(html.P([html.Br(),html.H2(html.B('Dynamic time warping from selected cluster')),html.Br()]), style=STYLE_5),
+#             html.Img(id = 'dtws-uniq-plot',
+#                            src = '',
+#                            style=STYLE_4)
+#         ]),
+#         html.Div(html.P([html.Br(),html.H2(html.B('Cluster counts')),html.Br()]), style=STYLE_5),
+#         html.Div([html.Img(id = 'clusters-hist-plot',
+#                            src = '',
+#                            style=STYLE_4)
+#         ]),
+#         html.Div(html.P([html.Br(),html.H2(html.B('Components mapping from dendrogram')),html.Br()]), style=STYLE_5),
+#         html.Div([html.Img(id = 'clusters-map-text-plot',
+#                            src = '',
+#                            style=STYLE_4)
+#         ]),
+#         html.Div(html.P([html.Br(),html.H2(html.B('Mapping from selected cluster')),html.Br()]), style=STYLE_5),
+#         html.Div([html.Img(id = 'clusters-uniq-plot',
+#                            src = '',
+#                            style=STYLE_4)
+#         ]),
+#         html.Div(html.P([html.Br(),html.H2(html.B('Distributions of time series from selected cluster')),html.Br()]), style=STYLE_5),
+#         html.Div([html.Img(id = 'klb-uniq-plot',
+#                            src = '',
+#                            style=STYLE_4)
+#         ]),
+#     ])
+#     return(html_res)
+    
 ###################
 # core of the app #  
 ###################
@@ -1050,8 +1204,6 @@ def update_fig_5(vthreshold):
 
     df_all = pd.concat([df_hk_select,df_nikkei_select,df_spmini500_select],axis=1).dropna()
 
-    print(df_all[[el for el in df_all.columns if 'Close' in el]].pct_change().dropna())
-    
     # correlation
     df_corr_all = df_all[[el for el in df_all.columns if 'H-L' not in el]]    
     fig_corr, corr_matrix = data_pairheat(df_corr_all)
@@ -1070,6 +1222,66 @@ def update_fig_5(vthreshold):
     
     return(fig_corr,df_res_table,fig_heatmap,fig_corr_pair)
 
+# ##########################################################################################################################################################################################
+# #                                                                                        page_6
+# ##########################################################################################################################################################################################
+# page_6_layout = html.Div([ get_layout_6() ])
+
+# @app.callback(Output('ohlc-dist', 'value'),
+#               [Input('ohlc-dd-pair1','value'),
+#                Input('ohlc-dd-pair2','value'),
+#                Input('ohlc-dd-day1','value'),
+#                Input('ohlc-dd-day1','value')],
+# )              
+# def update_fig_6(pair_1,pair_2,date_1,date_2):
+#     mask_hk = (df_hk.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_hk.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
+#     df_hk_select = df_hk.loc[mask_hk]
+#     mask_nikkei = (df_nikkei.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_nikkei.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
+#     df_nikkei_select = df_nikkei.loc[mask_nikkei]
+#     mask_spmini500 = (df_spmini500.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_spmini500.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
+#     df_spmini500_select = df_spmini500.loc[mask_spmini500]
+
+#     df_hk_select.columns = [ el+'_hk' for el in df_hk_select.columns ]
+#     df_nikkei_select.columns = [ el+'_nk' for el in df_nikkei_select.columns ]
+#     df_spmini500_select.columns = [ el+'_us' for el in df_spmini500_select.columns ]
+
+#     df_all = pd.concat([df_hk_select,df_nikkei_select,df_spmini500_select],axis=1).dropna()
+#     returns = df_all[[el for el in df_all.columns if 'Volume' not in el and 'H-L' not in el]].pct_change().dropna()
+#     returns.replace([np.inf, -np.inf], np.nan).dropna(inplace=True)
+
+#     mask_1 = (returns.index == pd.to_datetime('2020-05-'+"{:02d}".format(date_1)+' 00:00:00').tz_localize('UTC'))
+#     mask_2 = (returns.index == pd.to_datetime('2020-05-'+"{:02d}".format(date_2)+' 00:00:00').tz_localize('UTC'))
+
+#     pair1_select = returns[mask_1]
+#     pair2_select = returns[mask_2]
+
+#     data = [dict(
+#         type='Histogram2dContour',
+#         x = pair1_select,
+#         y = pair2_select,
+#         colorscale = 'Blues',
+#         reversescale = True,
+#         )]
+
+#     layout = dict()
+#     fig = dict(data=data,layout=layout)
+    
+#     # fig['layout'] = dict()
+#     # fig['layout']['plot_bgcolor'] = 'rgb(250, 250, 250)'
+#     # fig['layout']['xaxis'] = dict(rangeselector = dict( visible = True))
+#     # fig['layout']['yaxis'] = dict(domain = [0, 0.2], showticklabels = False, autoscale=True)
+#     # fig['layout']['yaxis2'] = dict(domain = [0.2, 0.8])
+#     # fig['layout']['legend'] = dict(orientation = 'h', y=0.9, x=0.3, yanchor='bottom')
+#     # fig['layout']['margin'] = dict(t=40, b=40, r=40, l=40)
+#     # fig['layout']['width'] = 1800
+#     # fig['layout']['height'] = 1200
+
+#     # fig['data'].append( dict( x=mv_x, y=mv_y, type='scatter', mode='lines', 
+#     #                         line = dict( width = 1 ),
+#     #                         marker = dict( color = color_3 ),
+#     #                         yaxis = 'y2', name='Moving Average' ) )
+#     return(fig)
+
 ####################################################################################################################################################################################
 #                                                                                            page display                                                                          # 
 ####################################################################################################################################################################################
@@ -1086,6 +1298,8 @@ def display_page(pathname):
         return page_4_layout
     elif pathname == '/page-5':
         return page_5_layout
+    # elif pathname == '/page-6':
+    #     return page_6_layout
 
 if __name__ == '__main__':
     app.run_server(debug=True)
