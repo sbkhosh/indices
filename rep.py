@@ -122,6 +122,7 @@ def mdd(df):
     return({'mdd': mdd * 100.0, 'volatility': volatility * 100.0, 'growth': growth * 100.0})
     
 def stats_ohlcv(df_raw,ohlcv):
+    length_data = len(df_raw)
     df_raw[ohlcv + '_rate_ret'] = df_raw[ohlcv].pct_change().dropna()
     df_raw[ohlcv + '_rate_ret'].iloc[0] = 0.0
     df_raw[ohlcv + '_cum_ret'] = (1.0+df_raw[ohlcv + '_rate_ret']).cumprod()
@@ -130,15 +131,20 @@ def stats_ohlcv(df_raw,ohlcv):
 
     # index for the maximum return value
     idx_max_ret = df_raw[[ohlcv + '_rate_ret']].idxmax()
+    idx_max_ret = df_raw[[ohlcv + '_rate_ret']].idxmin()
     
     res = mdd(df_raw)
-    res['start_sess'] = df_raw.index[0]
-    res['end_sess'] = df_raw.index[-1]
-    res['max_ret_date'] = df_raw.index[idx_max_ret]
+    res['start_sess'] = pd.to_datetime("{:02d}"':'"{:02d}"':'"{:02d}".format(df_raw.index[0].hour,df_raw.index[0].minute,df_raw.index[0].second)) 
+    res['end_sess'] = pd.to_datetime("{:02d}"':'"{:02d}"':'"{:02d}".format(df_raw.index[-1].hour,df_raw.index[-1].minute,df_raw.index[-1].second))
+    res['max_ret_time'] = pd.to_datetime("{:02d}"':'"{:02d}"':'"{:02d}".format(df_raw.index[idx_max_ret].hour,df_raw.index[idx_max_ret].minute,df_raw.index[idx_max_ret].second))
+    res['min_ret_time'] = pd.to_datetime("{:02d}"':'"{:02d}"':'"{:02d}".format(df_raw.index[idx_min_ret].hour,df_raw.index[idx_min_ret].minute,df_raw.index[idx_min_ret].second))
+    res['max_ret_ratio'] = float(idx_max_ret)/(float(length_data)) * 100.0
+    res['min_ret_ratio'] = float(idx_min_ret)/(float(length_data)) * 100.0
     res['mean_return'] = df_raw[ohlcv + '_rate_ret'].mean()
     res['std_return'] = df_raw[ohlcv + '_rate_ret'].std()
     res['pos_return_sess'] = res['growth']>0.0
-    
+    res['up_mvs_ratio'] = 100.0 * len(list(filter(lambda x: (x < 0), np.diff(df_raw[ohlcv + '_rate_ret'].values)))) / float(length_data - 1)
+    res['down_mvs_ratio'] = 100.0 * len(list(filter(lambda x: (x >= 0), np.diff(df_raw[ohlcv + '_rate_ret'].values)))) / float(length_data - 1)
     
     return(res)
     
