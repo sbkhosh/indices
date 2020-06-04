@@ -1,18 +1,12 @@
 #!/usr/bin/python3
 
+import pandas as pd
 import matplotlib
-import os
-import pandas as pd 
 import warnings
 
 from dt_help import Helper
 from dt_read import DataProcessor
-from dt_model import MeanRevertStrat
 from pandas.plotting import register_matplotlib_converters
-
-import matplotlib.pyplot as plt
-import numpy as np
-import seaborn as sns
 
 warnings.filterwarnings('ignore',category=FutureWarning)
 pd.options.mode.chained_assignment = None 

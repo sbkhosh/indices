@@ -1,5 +1,5 @@
-file_in: 'hknikkei.xlsx'
-use_cols: "A:F,H:M,P:U"
+file_in: 'all_data_us_asia_eu_utc.xlsx'
+use_cols: "A:F,H:M"
 offset: 5
 
 
