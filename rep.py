@@ -121,32 +121,60 @@ def mdd(df):
     growth = res1/res2 - 1.0
     return({'mdd': mdd * 100.0, 'volatility': volatility * 100.0, 'growth': growth * 100.0})
     
-def stats_ohlcv(df_raw,ohlcv):
-    length_data = len(df_raw)
-    df_raw[ohlcv + '_rate_ret'] = df_raw[ohlcv].pct_change().dropna()
-    df_raw[ohlcv + '_rate_ret'].iloc[0] = 0.0
-    df_raw[ohlcv + '_cum_ret'] = (1.0+df_raw[ohlcv + '_rate_ret']).cumprod()
-    df_raw[ohlcv + '_cum_ret'].iloc[0] = 1.0
+def stats_ohlcv(df_1,df_2,df_3,df_4,day_in,ohlcv):
+    len_df = [ len(df_1), len(df_2), len(df_3), len(df_4) ]
+    markets = ['Hang Seng', 'Nikkei225', 'eMiniSP500', 'EuroStoxx50']
 
+    df_1[ohlcv + '_rate_ret'] = df_1[ohlcv].pct_change().dropna()
+    df_1[ohlcv + '_rate_ret'].iloc[0] = 0.0
+    df_1[ohlcv + '_cum_ret'] = (1.0+df_1[ohlcv + '_rate_ret']).cumprod()
+    df_1[ohlcv + '_cum_ret'].iloc[0] = 1.0
 
-    # index for the maximum return value
-    idx_max_ret = df_raw[[ohlcv + '_rate_ret']].idxmax()
-    idx_max_ret = df_raw[[ohlcv + '_rate_ret']].idxmin()
+    df_2[ohlcv + '_rate_ret'] = df_2[ohlcv].pct_change().dropna()
+    df_2[ohlcv + '_rate_ret'].iloc[0] = 0.0
+    df_2[ohlcv + '_cum_ret'] = (1.0+df_2[ohlcv + '_rate_ret']).cumprod()
+    df_2[ohlcv + '_cum_ret'].iloc[0] = 1.0
+
+    df_3[ohlcv + '_rate_ret'] = df_3[ohlcv].pct_change().dropna()
+    df_3[ohlcv + '_rate_ret'].iloc[0] = 0.0
+    df_3[ohlcv + '_cum_ret'] = (1.0+df_3[ohlcv + '_rate_ret']).cumprod()
+    df_3[ohlcv + '_cum_ret'].iloc[0] = 1.0
+
+    df_4[ohlcv + '_rate_ret'] = df_4[ohlcv].pct_change().dropna()
+    df_4[ohlcv + '_rate_ret'].iloc[0] = 0.0
+    df_4[ohlcv + '_cum_ret'] = (1.0+df_4[ohlcv + '_rate_ret']).cumprod()
+    df_4[ohlcv + '_cum_ret'].iloc[0] = 1.0   
     
-    res = mdd(df_raw)
-    res['start_sess'] = pd.to_datetime("{:02d}"':'"{:02d}"':'"{:02d}".format(df_raw.index[0].hour,df_raw.index[0].minute,df_raw.index[0].second)) 
-    res['end_sess'] = pd.to_datetime("{:02d}"':'"{:02d}"':'"{:02d}".format(df_raw.index[-1].hour,df_raw.index[-1].minute,df_raw.index[-1].second))
-    res['max_ret_time'] = pd.to_datetime("{:02d}"':'"{:02d}"':'"{:02d}".format(df_raw.index[idx_max_ret].hour,df_raw.index[idx_max_ret].minute,df_raw.index[idx_max_ret].second))
-    res['min_ret_time'] = pd.to_datetime("{:02d}"':'"{:02d}"':'"{:02d}".format(df_raw.index[idx_min_ret].hour,df_raw.index[idx_min_ret].minute,df_raw.index[idx_min_ret].second))
-    res['max_ret_ratio'] = float(idx_max_ret)/(float(length_data)) * 100.0
-    res['min_ret_ratio'] = float(idx_min_ret)/(float(length_data)) * 100.0
-    res['mean_return'] = df_raw[ohlcv + '_rate_ret'].mean()
-    res['std_return'] = df_raw[ohlcv + '_rate_ret'].std()
-    res['pos_return_sess'] = res['growth']>0.0
-    res['up_mvs_ratio'] = 100.0 * len(list(filter(lambda x: (x < 0), np.diff(df_raw[ohlcv + '_rate_ret'].values)))) / float(length_data - 1)
-    res['down_mvs_ratio'] = 100.0 * len(list(filter(lambda x: (x >= 0), np.diff(df_raw[ohlcv + '_rate_ret'].values)))) / float(length_data - 1)
-    
-    return(res)
+    df_res = pd.DataFrame(index=[0,1,2,3],columns=['st_session','ed_session','mdd','volatility','growth','max_ret_time','min_ret_time',
+                                                   'mean_return','std_return','pos_return_session','up_mvs_ratio','down_mvs_ratio','market','day_session'])
+
+    for i,el in enumerate([df_1,df_2,df_3,df_4]):
+        res = mdd(el)
+
+        df_res['st_session'].iloc[i] = "{:02d}"':'"{:02d}"':'"{:02d}".format(el.index[0].hour,el.index[0].minute,el.index[0].second)
+        df_res['ed_session'].iloc[i] = "{:02d}"':'"{:02d}"':'"{:02d}".format(el.index[-1].hour,el.index[-1].minute,el.index[-1].second)
+        df_res['mdd'].iloc[i] = res['mdd']
+        df_res['volatility'].iloc[i] = res['volatility']
+        df_res['growth'].iloc[i] = res['growth']
+
+        # index for the maximum return value
+        idx_max_ret = el[[ohlcv + '_rate_ret']].idxmax()
+        idx_min_ret = el[[ohlcv + '_rate_ret']].idxmin()
+        df_res['max_ret_time'].iloc[i] = "{:02d}"':'"{:02d}"':'"{:02d}".format(pd.to_datetime(idx_max_ret.values[0]).hour,
+                                                                        pd.to_datetime(idx_max_ret.values[0]).minute,
+                                                                        pd.to_datetime(idx_max_ret.values[0]).second)
+        df_res['min_ret_time'].iloc[i] = "{:02d}"':'"{:02d}"':'"{:02d}".format(pd.to_datetime(idx_min_ret.values[0]).hour,
+                                                                        pd.to_datetime(idx_min_ret.values[0]).minute,
+                                                                        pd.to_datetime(idx_min_ret.values[0]).second)
+        df_res['mean_return'].iloc[i] = el[ohlcv + '_rate_ret'].mean()
+        df_res['std_return'].iloc[i] = el[ohlcv + '_rate_ret'].std()
+        df_res['pos_return_session'].iloc[i] = res['growth'] > 0.0
+        df_res['up_mvs_ratio'].iloc[i] = 100.0 * len(list(filter(lambda x: (x < 0), np.diff(el[ohlcv + '_rate_ret'].values)))) / float(len_df[i] - 1)
+        df_res['down_mvs_ratio'].iloc[i] = 100.0 * len(list(filter(lambda x: (x >= 0), np.diff(el[ohlcv + '_rate_ret'].values)))) / float(len_df[i] - 1)
+        df_res['market'].iloc[i] = markets[i]
+        df_res['day_session'].iloc[i] = pd.to_datetime(day_in).date()
+
+    return(df_res)
     
 def movingaverage(df, window_size='30T'):
     return(df.rolling(window=window_size).mean())
@@ -865,7 +893,7 @@ def table_stats_ohlcv(df_hk,df_nk,df_sp,df_eu,ohlc):
     start_date_minute = pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')
     end_date_minute = pd.to_datetime('2020-06-01 23:59:00').tz_localize('UTC')
    
-    # find daily dates that are common to all indices
+    # find daily dates that are common to all indices (filtering out holdidays included in one market but not the other for example)
     start_date_daily = pd.to_datetime('2020-'"{:02d}"'-'"{:02d}".format(start_date_minute.month,start_date_minute.day))
     end_date_daily = pd.to_datetime('2020-'"{:02d}"'-'"{:02d}".format(end_date_minute.month,end_date_minute.day))
 
@@ -873,10 +901,28 @@ def table_stats_ohlcv(df_hk,df_nk,df_sp,df_eu,ohlc):
     days_nk = pd.DataFrame(nikkei_daily_dates[nikkei_daily_dates >= start_date_daily])
     days_sp = pd.DataFrame(spmini_daily_dates[spmini_daily_dates >= start_date_daily])
     days_eu = pd.DataFrame(eu_daily_dates[eu_daily_dates >= start_date_daily])
-    days_all = pd.concat([days_hk,days_nk,days_sp,days_eu],axis=1).dropna().iloc[:,0]
 
+    tmp_hk = [ pd.to_datetime(el) for el in days_hk['Dates'].values ]
+    days_hk_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_hk ]
+
+    tmp_nk = [ pd.to_datetime(el) for el in days_nk['Dates'].values ]
+    days_nk_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_nk ]
+
+    tmp_sp = [ pd.to_datetime(el) for el in days_sp['Dates'].values ]
+    days_sp_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_sp ]
+
+    tmp_eu = [ pd.to_datetime(el) for el in days_eu['Dates'].values ]
+    days_eu_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_eu ]
+    
+    
+    elements_in_all = list(set.intersection(*map(set, [days_hk_filter,days_nk_filter,days_sp_filter,days_eu_filter])))
+
+    days_all = sorted(elements_in_all, key=lambda x: datetime.strptime(x, '%Y-%m-%d'))
+    days_all = [pd.to_datetime(el) for el in days_all]
+    
     # for each daily date take a full 24hr session (for all indices)
-    for el in days_all[:1]:
+    stats_all = []
+    for el in days_all:
         sd = pd.to_datetime(str(el.date()) + ' 00:00:00').tz_localize('UTC')
         ed = pd.to_datetime(str(el.date()) + ' 23:59:59').tz_localize('UTC')
         
@@ -890,16 +936,10 @@ def table_stats_ohlcv(df_hk,df_nk,df_sp,df_eu,ohlc):
         df_sp_select = df_sp.loc[mask_sp]
         df_eu_select = df_eu.loc[mask_eu]
 
-        stats_hk = stats_ohlcv(df_hk_select,ohlc)
-        stats_nk = stats_ohlcv(df_nk_select,ohlc)
-        stats_sp = stats_ohlcv(df_sp_select,ohlc)
-        stats_eu = stats_ohlcv(df_eu_select,ohlc)
+        stats_all.append(stats_ohlcv(df_hk_select,df_nk_select,df_sp_select,df_eu_select,el,ohlc))
 
-        
-        # df_hk_select.columns = [el + '_hk' for el in df_hk_select.columns]
-        # df_nk_select.columns = [el + '_nk' for el in df_nk_select.columns]
-        # df_sp_select.columns = [el + '_sp' for el in df_sp_select.columns]
-        # df_eu_select.columns = [el + '_eu' for el in df_eu_select.columns]
+    df_all = pd.concat(stats_all,axis=0).groupby(['day_session', 'market']).agg(lambda x: x)
+    print(df_all)
         
 def nav_menu():
     nav = dbc.Nav(
