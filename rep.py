@@ -26,6 +26,7 @@ import warnings
 import yaml
 
 from dash.dependencies import Output, Input, State
+from dash.exceptions import PreventUpdate
 from datetime import datetime
 from dt_read import DataProcessor
 from pandas.plotting import register_matplotlib_converters
@@ -157,7 +158,7 @@ def mdd(df):
     res1 = df[[el for el in df.columns if 'cum_ret' in el]].iloc[-1].values[0]
     res2 = df[[el for el in df.columns if 'cum_ret' in el]].iloc[0].values[0]
     growth = res1/res2 - 1.0
-    return({'mdd': mdd * 100.0, 'volatility': volatility * 100.0, 'growth': growth * 100.0})
+    return({'mdd': round(mdd * 100.0,3), 'volatility': round(volatility * 100.0,3), 'growth': round(growth * 100.0,3)})
     
 def stats_ohlcv(df_1,df_2,df_3,df_4,day_in,ohlcv):
     len_df = [ len(df_1), len(df_2), len(df_3), len(df_4) ]
@@ -183,14 +184,15 @@ def stats_ohlcv(df_1,df_2,df_3,df_4,day_in,ohlcv):
     df_4[ohlcv + '_cum_ret'] = (1.0+df_4[ohlcv + '_rate_ret']).cumprod()
     df_4[ohlcv + '_cum_ret'].iloc[0] = 1.0   
     
-    df_res = pd.DataFrame(index=[0,1,2,3],columns=['st_session','ed_session','mdd','volatility','growth','max_ret_time','min_ret_time',
-                                                   'mean_return','std_return','pos_return_session','up_mvs_ratio','down_mvs_ratio','market','day_session'])
+    df_res = pd.DataFrame(index=[0,1,2,3],columns=['day_session','mdd','volatility','growth','max_ret_time','min_ret_time',
+                                                   'mean_return','std_return','pos_return','up_ratio','down_ratio','market'])
 
     for i,el in enumerate([df_1,df_2,df_3,df_4]):
         res = mdd(el)
 
-        df_res['st_session'].iloc[i] = "{:02d}"':'"{:02d}"':'"{:02d}".format(el.index[0].hour,el.index[0].minute,el.index[0].second)
-        df_res['ed_session'].iloc[i] = "{:02d}"':'"{:02d}"':'"{:02d}".format(el.index[-1].hour,el.index[-1].minute,el.index[-1].second)
+        df_res['day_session'].iloc[i] = pd.to_datetime(day_in).date()
+        # df_res['st_session'].iloc[i] = "{:02d}"':'"{:02d}"':'"{:02d}".format(el.index[0].hour,el.index[0].minute,el.index[0].second)
+        # df_res['ed_session'].iloc[i] = "{:02d}"':'"{:02d}"':'"{:02d}".format(el.index[-1].hour,el.index[-1].minute,el.index[-1].second)
         df_res['mdd'].iloc[i] = res['mdd']
         df_res['volatility'].iloc[i] = res['volatility']
         df_res['growth'].iloc[i] = res['growth']
@@ -204,13 +206,12 @@ def stats_ohlcv(df_1,df_2,df_3,df_4,day_in,ohlcv):
         df_res['min_ret_time'].iloc[i] = "{:02d}"':'"{:02d}"':'"{:02d}".format(pd.to_datetime(idx_min_ret.values[0]).hour,
                                                                         pd.to_datetime(idx_min_ret.values[0]).minute,
                                                                         pd.to_datetime(idx_min_ret.values[0]).second)
-        df_res['mean_return'].iloc[i] = el[ohlcv + '_rate_ret'].mean()
-        df_res['std_return'].iloc[i] = el[ohlcv + '_rate_ret'].std()
-        df_res['pos_return_session'].iloc[i] = res['growth'] > 0.0
-        df_res['up_mvs_ratio'].iloc[i] = 100.0 * len(list(filter(lambda x: (x < 0), np.diff(el[ohlcv + '_rate_ret'].values)))) / float(len_df[i] - 1)
-        df_res['down_mvs_ratio'].iloc[i] = 100.0 * len(list(filter(lambda x: (x >= 0), np.diff(el[ohlcv + '_rate_ret'].values)))) / float(len_df[i] - 1)
+        df_res['mean_return'].iloc[i] = round(el[ohlcv + '_rate_ret'].mean(),5)
+        df_res['std_return'].iloc[i] = round(el[ohlcv + '_rate_ret'].std(),5)
+        df_res['pos_return'].iloc[i] = res['growth'] > 0.0
+        df_res['up_ratio'].iloc[i] = round(100.0 * len(list(filter(lambda x: (x < 0), np.diff(el[ohlcv + '_rate_ret'].values)))) / float(len_df[i] - 1),2)
+        df_res['down_ratio'].iloc[i] = round(100.0 * len(list(filter(lambda x: (x >= 0), np.diff(el[ohlcv + '_rate_ret'].values)))) / float(len_df[i] - 1),2)
         df_res['market'].iloc[i] = markets[i]
-        df_res['day_session'].iloc[i] = pd.to_datetime(day_in).date()
 
     return(df_res)
     
@@ -946,9 +947,10 @@ def table_stats_ohlcv(df_hk,df_nk,df_sp,df_eu,ohlc):
 
         stats_all.append(stats_ohlcv(df_hk_select,df_nk_select,df_sp_select,df_eu_select,el,ohlc))
 
-    df_all = pd.concat(stats_all,axis=0).groupby(['day_session', 'market']).agg(lambda x: x)
-    print(df_all)
-        
+    df_all = pd.concat(stats_all,axis=0).round(2)
+    # df_all = pd.concat(stats_all,axis=0).groupby(['day_session', 'market']).agg(lambda x: x)
+    return(df_all)
+    
 def nav_menu():
     nav = dbc.Nav(
         [
@@ -971,7 +973,7 @@ def df_to_table(df):
                                     hover=True,
                                     responsive=True,
                                     striped=True))
-
+    
 ##########################################################################################################################################################################################
 #                                                                                        layout_1
 ##########################################################################################################################################################################################
@@ -1233,7 +1235,7 @@ def get_layout_6():
     html_res = \
     html.Div([
               html.Div([
-                        html.Div(html.P([html.Br(),html.H5(html.B('For each index, a date can be chosen for which the distributions for the 15 minute data')),html.Br(),html.H5(html.B(''))]), style=STYLE_8)
+                        html.Div(html.P([html.Br(),html.H5(html.B('For each index, a date can be chosen for which the distributions for the 15 minute data')),html.Br(),html.H5(html.B('Once a choice is made on Index 1 and Index 2, then a corresponding day and month have to be chosen (relative to each index). For each of the dates selected a daily trading session session is uploaded and the returns for these are plotted vs each other to check on the relationship. This allows to select pairs from the Correlation page (selection made on their correlation threshold).'))]), style=STYLE_8)
                         ]),
               html.Div([
                         html.Div([
@@ -1349,13 +1351,21 @@ def get_layout_7():
                                       )
                                       ],style=STYLE_3),
                         html.Div([
-                                  html.Div(html.P([html.Br(),html.H2(html.B('Summary statistics table')),html.Br()]), style=STYLE_8),
-                                  html.Div(
-                                      id='stats-table-1',
-                                      className='tableDiv'
+                                  dash_table.DataTable(
+                                      id = 'stats-table-data',                                                                            
+                                      columns=[{"name": i, "id": i} for i in ['day_session','mdd','volatility','growth','max_ret_time','min_ret_time',
+                                       'mean_return','std_return','pos_return','up_ratio','down_ratio','market']],
+                                      filter_action='native',
+                                      sort_action="native",
+                                      sort_mode="multi",
+                                      column_selectable="multi",
+                                      row_selectable="multi",
+                                      row_deletable=True,
+                                      selected_columns=[],
+                                      selected_rows=[],
                                       )
-                                  ],style=STYLE_4),
-                         ])
+                        ])
+                    ])
               ])
     return(html_res)
     
@@ -1629,14 +1639,13 @@ def update_fig_6(index_val_1,index_val_2,day_1,month_1,day_2,month_2,ohlc_1,ohlc
 ##########################################################################################################################################################################################
 page_7_layout = html.Div([ get_layout_7() ])
 
-@app.callback(Output('stats-table-1', 'children'),
-              [Input('stats-ohlcv', 'value')]
+@app.callback(Output('stats-table-data', 'data'),
+              [Input('stats-ohlcv', 'value')],
 )
 def update_fig_7(ohlc):
-    df_summary_1 = df_to_table(df_hk_minute[:10])
-    table_stats_ohlcv(df_hk_minute,df_nikkei_minute,df_spmini500_minute,df_eustoxx50_minute,ohlc)
-    return(df_summary_1)
-    
+    df_res = table_stats_ohlcv(df_hk_minute,df_nikkei_minute,df_spmini500_minute,df_eustoxx50_minute,ohlc)
+    return(df_res.to_dict('rows'))
+
 ####################################################################################################################################################################################
 #                                                                                            page display                                                                          # 
 ####################################################################################################################################################################################
