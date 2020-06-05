@@ -77,6 +77,44 @@ df_hk_minute, df_nikkei_minute, df_spmini500_minute, df_eustoxx50_minute, df_vix
 hk_daily_dates,nikkei_daily_dates,spmini_daily_dates,eu_daily_dates,vix_daily_dates, \
 hk_minute_dates,nikkei_minute_dates,spmini_minute_dates,eu_minute_dates,vix_minute_dates = get_data_all()
 
+def all_common_dates():
+    start_date_minute = pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')
+    end_date_minute = pd.to_datetime('2020-06-01 23:59:00').tz_localize('UTC')
+   
+    # find daily dates that are common to all indices (filtering out holdidays included in one market but not the other for example)
+    start_date_daily = pd.to_datetime('2020-'"{:02d}"'-'"{:02d}".format(start_date_minute.month,start_date_minute.day))
+    end_date_daily = pd.to_datetime('2020-'"{:02d}"'-'"{:02d}".format(end_date_minute.month,end_date_minute.day))
+
+    days_hk = pd.DataFrame(hk_daily_dates[hk_daily_dates >= start_date_daily])
+    days_nk = pd.DataFrame(nikkei_daily_dates[nikkei_daily_dates >= start_date_daily])
+    days_sp = pd.DataFrame(spmini_daily_dates[spmini_daily_dates >= start_date_daily])
+    days_eu = pd.DataFrame(eu_daily_dates[eu_daily_dates >= start_date_daily])
+
+    tmp_hk = [ pd.to_datetime(el) for el in days_hk['Dates'].values ]
+    days_hk_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_hk ]
+
+    tmp_nk = [ pd.to_datetime(el) for el in days_nk['Dates'].values ]
+    days_nk_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_nk ]
+
+    tmp_sp = [ pd.to_datetime(el) for el in days_sp['Dates'].values ]
+    days_sp_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_sp ]
+
+    tmp_eu = [ pd.to_datetime(el) for el in days_eu['Dates'].values ]
+    days_eu_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_eu ]
+    
+    elements_in_all = list(set.intersection(*map(set, [days_hk_filter,days_nk_filter,days_sp_filter,days_eu_filter])))
+
+    days_all = sorted(elements_in_all, key=lambda x: datetime.strptime(x, '%Y-%m-%d'))
+    days_all = [pd.to_datetime(el) for el in days_all]
+    return(days_all)
+
+def days_inter_df(df,lst_days):
+    df_dates = [ '2020-'"{:02d}"'-'"{:02d}".format(el.month,el.day) for el in df.index ]
+    elements_in_all = list(set.intersection(*map(set, [df_dates,lst_days])))
+    common_days_df = sorted(elements_in_all, key=lambda x: datetime.strptime(x, '%Y-%m-%d'))
+    days_df_common = [pd.to_datetime(el) for el in lst_days]
+    return(days_df_common)
+    
 def get_df_choice(freq,index_val,wnd):
     if(freq == 'daily' and index_val=='HangSeng'):
         df = df_hk_daily
@@ -521,42 +559,41 @@ def fig_bar_plot(df,freq,index_val,wnd):
     fig['data'].append(dict(x=df.index, y=df['Volume'],                         
                             marker=dict(color=colors),
                             type='bar', yaxis='y', name='Volume'))
-
-
+    
     if(freq == 'daily'):
-        mask_hk = (df_hk_daily.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_hk_daily.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
+        mask_hk = (df_hk_daily.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC'))
         df_hk_select = df_hk_daily.loc[mask_hk]
         fig_hk = candlestick_plot(df_hk_select,freq,'HangSeng')
 
-        mask_nikkei = (df_nikkei_daily.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_nikkei_daily.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
+        mask_nikkei = (df_nikkei_daily.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC'))
         df_nikkei_select = df_nikkei_daily.loc[mask_nikkei]
         fig_nikkei = candlestick_plot(df_nikkei_select,freq,'Nikkei225')
 
-        mask_spmini500 = (df_spmini500_daily.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_spmini500_daily.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
+        mask_spmini500 = (df_spmini500_daily.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC'))
         df_spmini500_select = df_spmini500_daily.loc[mask_spmini500]
         fig_spmini500 = candlestick_plot(df_spmini500_select,freq,'eMiniSP500')
 
-        mask_eustoxx50 = (df_eustoxx50_daily.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_eustoxx50_daily.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
+        mask_eustoxx50 = (df_eustoxx50_daily.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC'))
         df_eustoxx50_select = df_eustoxx50_daily.loc[mask_eustoxx50]
         fig_eustoxx50 = candlestick_plot(df_eustoxx50_select,freq,'EuroStoxx50')
 
-        mask_vix = (df_vix_daily.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_vix_daily.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
+        mask_vix = (df_vix_daily.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC'))
         df_vix_select = df_vix_daily.loc[mask_vix]
         fig_vix = candlestick_plot(df_vix_select,freq,'VIX')
     elif(freq == '15min'):
-        mask_hk = (df_hk_minute.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_hk_minute.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
+        mask_hk = (df_hk_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC'))
         df_hk_select = df_hk_minute.loc[mask_hk]
         fig_hk = candlestick_plot(df_hk_select,freq,'HangSeng')
 
-        mask_nikkei = (df_nikkei_minute.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_nikkei_minute.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
+        mask_nikkei = (df_nikkei_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC'))
         df_nikkei_select = df_nikkei_minute.loc[mask_nikkei]
         fig_nikkei = candlestick_plot(df_nikkei_select,freq,'Nikkei225')
 
-        mask_spmini500 = (df_spmini500_minute.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_spmini500_minute.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
+        mask_spmini500 = (df_spmini500_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC'))
         df_spmini500_select = df_spmini500_minute.loc[mask_spmini500]
         fig_spmini500 = candlestick_plot(df_spmini500_select,freq,'eMiniSP500')
 
-        mask_eustoxx50 = (df_eustoxx50_minute.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_eustoxx50_minute.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
+        mask_eustoxx50 = (df_eustoxx50_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC'))
         df_eustoxx50_select = df_eustoxx50_minute.loc[mask_eustoxx50]
         fig_eustoxx50 = candlestick_plot(df_eustoxx50_select,freq,'EuroStoxx50')
         
@@ -567,7 +604,6 @@ def fig_bar_plot(df,freq,index_val,wnd):
     return(fig,fig_hk,fig_nikkei,fig_spmini500,fig_eustoxx50,fig_vix)
     
 def data_pairplot(df):
-    df = df.astype(float)
     filename = 'data_out/pairplot.png'
 
     if(os.path.exists(filename)):
@@ -631,7 +667,7 @@ def data_heatmap(df):
         z = df.values,
         x = df.columns.values,
         y = df.index,
-        name = 'All indices - Week 10th and 17th May',
+        name = 'All indices',
         )]
 
     layout = dict()
@@ -890,35 +926,7 @@ def fig_dist_comp(index_val_1,index_val_2,df_hk_1,df_hk_2,df_nk_1,df_nk_2,df_sp_
     return(fig_1,fig_2)
 
 def table_stats_ohlcv(df_hk,df_nk,df_sp,df_eu,ohlc):
-    start_date_minute = pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')
-    end_date_minute = pd.to_datetime('2020-06-01 23:59:00').tz_localize('UTC')
-   
-    # find daily dates that are common to all indices (filtering out holdidays included in one market but not the other for example)
-    start_date_daily = pd.to_datetime('2020-'"{:02d}"'-'"{:02d}".format(start_date_minute.month,start_date_minute.day))
-    end_date_daily = pd.to_datetime('2020-'"{:02d}"'-'"{:02d}".format(end_date_minute.month,end_date_minute.day))
-
-    days_hk = pd.DataFrame(hk_daily_dates[hk_daily_dates >= start_date_daily])
-    days_nk = pd.DataFrame(nikkei_daily_dates[nikkei_daily_dates >= start_date_daily])
-    days_sp = pd.DataFrame(spmini_daily_dates[spmini_daily_dates >= start_date_daily])
-    days_eu = pd.DataFrame(eu_daily_dates[eu_daily_dates >= start_date_daily])
-
-    tmp_hk = [ pd.to_datetime(el) for el in days_hk['Dates'].values ]
-    days_hk_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_hk ]
-
-    tmp_nk = [ pd.to_datetime(el) for el in days_nk['Dates'].values ]
-    days_nk_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_nk ]
-
-    tmp_sp = [ pd.to_datetime(el) for el in days_sp['Dates'].values ]
-    days_sp_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_sp ]
-
-    tmp_eu = [ pd.to_datetime(el) for el in days_eu['Dates'].values ]
-    days_eu_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_eu ]
-    
-    
-    elements_in_all = list(set.intersection(*map(set, [days_hk_filter,days_nk_filter,days_sp_filter,days_eu_filter])))
-
-    days_all = sorted(elements_in_all, key=lambda x: datetime.strptime(x, '%Y-%m-%d'))
-    days_all = [pd.to_datetime(el) for el in days_all]
+    days_all = all_common_dates()
     
     # for each daily date take a full 24hr session (for all indices)
     stats_all = []
@@ -971,7 +979,7 @@ def get_layout_1():
     html_res = \
     html.Div([
               html.Div([
-                        html.Div(html.P([html.Br(),html.H5(html.B('For each chosen index, different metrics are shown. The moving average represented in the graph is based on the Close value. It is also possible to show for different backward windows. We notice that the most active sessions start from Mid-March for Nikkei225 and SP500 contracts and from beginning of May for Hang Seng')),html.Br(),html.H5(html.B('For Nikkei, the daily trend in terms of volume activity shows, during each cycle, the same pattern: a peak and gradual decrease')),html.Br(),html.H5(html.B('For Hang Seng, the daily trend in terms of volume activity shows a parabolic evolution during each cycle')),html.Br(),html.H5(html.B('For SP500, the daily trend in terms of volume activity shows a net uniform trend during half of a 24hr cycle and lesser activity during the other half'))]), style=STYLE_8),
+                        html.Div(html.P([html.Br(),html.H5(html.B('For each chosen index, different metrics are shown. The moving average represented in the graph is based on the Close value. It is also possible to show for different backward windows. We notice that the most active sessions start from March and span along this month')),html.Br(),html.H5(html.B('For Nikkei, the daily trend in terms of volume activity shows, during each cycle, the same pattern: a peak and gradual decrease')),html.Br(),html.H5(html.B('For Hang Seng, the daily trend in terms of volume activity shows a parabolic evolution during each cycle')),html.Br(),html.H5(html.B('For SP500, the daily trend in terms of volume activity shows a net uniform trend during half of a 24hr cycle and lesser activity during the other half and is similar for EuroStoxx50'))]), style=STYLE_8),
                         html.Div([
                                   html.Div(html.H4('Frequency'),style=STYLE_6),
                                   dcc.Dropdown(
@@ -1015,7 +1023,7 @@ def get_layout_2():
     html_res = \
     html.Div([
               html.Div([
-                        html.Div(html.P([html.Br(),html.H5(html.B('The methodology is to first cut out dates for which volume is insignificant by filtering on a specific date for each of the index. This is done by comparing the volume from the raw data plots')),html.Br(),html.H5(html.B('HangSeng: cut-off date = 2020-04-26')),html.Br(),html.H5(html.B('Nikkei225: cut-off date = 2020-03-08')),html.Br(),html.H5(html.B('eMiniSP500: cut-off date = 2020-03-08')),html.Br(),html.H5(html.B('After these cut-off dates the volumes have already spiked and got to tradable levels')),html.Br(),html.H5(html.B('Then we select the intersection of the previous cut-off dates, i.e. 2020-04-26'))]), style=STYLE_8)
+                        html.Div(html.P([html.Br(),html.H5(html.B('The methodology is to first cut out dates for which volume is insignificant by filtering on a specific date for each of the index. This is done by comparing the volume from the raw data plots'))]), style=STYLE_8)
                         ]),
               html.Div([
                         html.Div([
@@ -1061,7 +1069,7 @@ def get_layout_3():
     html_res = \
     html.Div([
               html.Div([
-                        html.Div(html.P([html.Br(),html.H5(html.B('Representation of High-Low prices focuses from the latest cut-off date of 2020-04-26 (for Hang Seng)')),html.Br(),html.H5(html.B('The Volume representation is relative to the movement of the High-Low price difference'))]), style=STYLE_8)
+                        html.Div(html.P([html.Br(),html.H5(html.B('Representation of High-Low prices. The Volume representation is relative to the movement of the High-Low price difference'))]), style=STYLE_8)
                         ]),
               html.Div([
                         html.Div([
@@ -1086,8 +1094,8 @@ def get_layout_3():
                                   html.Div(html.H4('Moving average time window'),style=STYLE_6),
                                   dcc.Dropdown(
                                       id='hl-dd-mvavg',
-                                      options=[{'label': str(i//60)+'hr', 'value': str(i)+'T'} for i in [60,120,240,720,1440]],
-                                      value='60T',
+                                      options=[{'label': str(i)+'D', 'value': int(i)} for i in [15,30,60,90]],
+                                      value='15D',
                                       style=STYLE_2
                                       )
                                       ],style=STYLE_9),
@@ -1107,7 +1115,7 @@ def get_layout_4():
     html_res = \
     html.Div([
               html.Div([
-                        html.Div(html.P([html.Br(),html.H5(html.B('As described in previous tabs, 2020-04-26 is the cut-off dates for which common trading sessions exist between the 3 indices considered here')),html.Br(),html.H5(html.B('As the week commencing 3rd May contains reduced trading days for Japan (due to holidays), we focus on two full weeks starting 10th May and 17th May')),html.Br(),html.H5(html.B('In addition these time windows are far enough from the volatile periods of the beginning of the year. This enables to look into a more general patterns/relationship between the different indices'))]), style=STYLE_8)
+                        html.Div(html.P([html.Br(),html.H5(html.B('Here we look into at the moving standard deviation for the whole period'))]), style=STYLE_8)
                         ]),
               html.Div([
                         html.Div([
@@ -1143,31 +1151,31 @@ def get_layout_4():
                                       style=STYLE_4)
                                       ]),
                         html.Div([
-                                  html.Div(html.P([html.Br(),html.H2(html.B('Hang Seng Index (week 10th and 17th May)')),html.Br()]), style=STYLE_8),
+                                  html.Div(html.P([html.Br(),html.H2(html.B('Hang Seng Index')),html.Br()]), style=STYLE_8),
                                   dcc.Graph(
                                       id = 'vol-focus-hk',
                                       style=STYLE_4)
                                       ]),
                         html.Div([
-                                  html.Div(html.P([html.Br(),html.H2(html.B('Nikkei Index (week 10th and 17th May)')),html.Br()]), style=STYLE_8),
+                                  html.Div(html.P([html.Br(),html.H2(html.B('Nikkei Index')),html.Br()]), style=STYLE_8),
                                   dcc.Graph(
                                       id = 'vol-focus-nikkei',
                                       style=STYLE_4)
                                       ]),
                         html.Div([
-                                  html.Div(html.P([html.Br(),html.H2(html.B('eMiniSP500 (week 10th and 17th May)')),html.Br()]), style=STYLE_8),
+                                  html.Div(html.P([html.Br(),html.H2(html.B('eMiniSP500')),html.Br()]), style=STYLE_8),
                                   dcc.Graph(
                                       id = 'vol-focus-spmini500',
                                       style=STYLE_4)
                                       ]),
                         html.Div([
-                                  html.Div(html.P([html.Br(),html.H2(html.B('EuroStoxx50 (week 10th and 17th May)')),html.Br()]), style=STYLE_8),
+                                  html.Div(html.P([html.Br(),html.H2(html.B('EuroStoxx50')),html.Br()]), style=STYLE_8),
                                   dcc.Graph(
                                       id = 'vol-focus-eurostoxx50',
                                       style=STYLE_4)
                                       ]),
                         html.Div([
-                                  html.Div(html.P([html.Br(),html.H2(html.B('VIX (week 10th and 17th May)')),html.Br()]), style=STYLE_8),
+                                  html.Div(html.P([html.Br(),html.H2(html.B('VIX')),html.Br()]), style=STYLE_8),
                                   dcc.Graph(
                                       id = 'vol-focus-vix',
                                       style=STYLE_4)
@@ -1183,7 +1191,7 @@ def get_layout_5():
     html_res = \
     html.Div([
               html.Div([
-                        html.Div(html.P([html.Br(),html.H5(html.B('Now we look at the corrleation between the OHLCV componenent of each index, focusing on the week of 10th and 17th of May')),html.Br(),html.H5(html.B('A pairplot give a better description on the relationship between the OHLCV components of the indices')),html.Br(),html.H5(html.B('These price components (OHLC) are then selected based on the chosen correlation threshold. Then the returns are computed for this time period'))]), style=STYLE_8)]),
+                        html.Div(html.P([html.Br(),html.H5(html.B('Now we look at the corrleation between the OHLCV componenent of each index. These price components (OHLC) are then selected based on the chosen correlation threshold'))]), style=STYLE_8)]),
               html.Div([
                         html.Div([
                                   html.Div(html.H4('Frequency'),style=STYLE_6),
@@ -1424,7 +1432,7 @@ page_2_layout = html.Div([ get_layout_2() ])
 )
 def update_fig_2(freq,index_val,wnd):
     df = get_df_choice(freq,index_val,wnd)
-    mask = (df.index >= pd.to_datetime('2020-03-01 00:00:00').tz_localize('UTC'))
+    mask = (df.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC'))
         
     fig = fig_raw_plot(df.loc[mask],freq,index_val,wnd)
     return(fig)
@@ -1452,7 +1460,7 @@ page_3_layout = html.Div([ get_layout_3() ])
 )              
 def update_fig_3(freq,index_val,wnd):
     df = get_df_choice(freq,index_val,wnd)
-    mask = (df.index >= pd.to_datetime('2020-03-01 00:00:00').tz_localize('UTC'))
+    mask = (df.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC'))
         
     fig = fig_scatter_plot(df.loc[mask],freq,index_val,wnd)
     return(fig)
@@ -1467,10 +1475,8 @@ def update_fig_3(freq,index_val,wnd):
 def update_mvstd_dropdown_4(freq):
     if(freq == 'daily'):
         options=[{'label': str(i)+'D', 'value': int(i)} for i in [15,30,60,90]]
-        print(options)
     elif(freq == '15min'):
         options=[{'label': str(i//60)+'hr', 'value': str(i)+'T'} for i in [60,120,240,720,1440]]
-        print(options)
     return(options)
     
 page_4_layout = html.Div([ get_layout_4() ])
@@ -1487,7 +1493,7 @@ page_4_layout = html.Div([ get_layout_4() ])
 )              
 def update_fig_4(freq,index_val,wnd):
     df = get_df_choice(freq,index_val,wnd)
-    mask = (df.index >= pd.to_datetime('2020-03-01 00:00:00').tz_localize('UTC'))
+    mask = (df.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC'))
     
     fig,fig_hk,fig_nikkei,fig_spmini500,fig_eustoxx50,fig_vix = fig_bar_plot(df.loc[mask],freq,index_val,wnd)
     return(fig,fig_hk,fig_nikkei,fig_spmini500,fig_eustoxx50,fig_vix)
@@ -1544,7 +1550,7 @@ def update_fig_5(freq,vthreshold):
 
     # correlation
     df_corr_all = df_all[[el for el in df_all.columns if 'H-L' not in el]]    
-    fig_corr, corr_matrix_filtered = data_pairheat(df_corr_all,'Correlation matrix for the time series of all indices - Week 10th and 17th May',vthreshold)
+    fig_corr, corr_matrix_filtered = data_pairheat(df_corr_all,'Correlation matrix for the time series of all indices',vthreshold)
 
     corr_matrix_dct = corr_matrix_filtered.unstack().to_dict()
     corr_matrix_dct = {k: v for k, v in corr_matrix_dct.items() if pd.Series(v).notna().all()}
