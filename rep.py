@@ -9,6 +9,7 @@ import dash_bootstrap_components as dbc
 import dash_table
 import datetime
 import itertools
+import json
 import math
 import matplotlib
 import matplotlib.pyplot as plt
@@ -65,7 +66,6 @@ STYLE_9 = {'width': '33%', 'float': 'left', 'display': 'inline-block'}
 STYLE_10 = {'width': '16.6%', 'float': 'left', 'display': 'inline-block'}
 STYLE_11 = {'height': '200%', 'width': '200%', 'float': 'left', 'padding': 90}
 
-
 def get_data_all():
     obj_reader = DataProcessor('data_in','data_out','conf_model.yml')
     obj_reader.read_prm()
@@ -86,6 +86,102 @@ hk_minute_dates,nikkei_minute_dates,spmini_minute_dates,eu_minute_dates,vix_minu
 
 #####################################################################################################################################################################################
 
+def fig_vwap(df_1,df_2,df_3,df_4,freq,index_val,ohlc):
+    if(index_val == 'Hang Seng'):
+        df = df_1
+    elif(index_val == 'Nikkei225'):
+        df = df_2
+    elif(index_val == 'eMiniSP500'):
+        df = df_3
+    elif(index_val == 'Eurostoxx50'):
+        df = df_4
+
+    q = df['Volume'].values
+    p = df[ohlc].values
+    df = df.assign(vwap=(p * q).cumsum() / q.cumsum())
+    
+    data = [dict(
+        type = 'scatter',
+        x = df.index,
+        y = df['vwap'],
+        yaxis = 'y2',
+        name = 'vwap',
+    )]
+    
+    layout = dict()
+    fig = dict(data=data,layout=layout)
+    
+    fig['layout'] = dict()
+    fig['layout']['plot_bgcolor'] = 'rgb(250, 250, 250)'
+    fig['layout']['xaxis'] = dict(rangeselector = dict( visible = True))
+    fig['layout']['yaxis'] = dict(domain = [0, 0.2], showticklabels = False, autoscale=True)
+    fig['layout']['yaxis2'] = dict(domain = [0.2, 0.8])
+    fig['layout']['legend'] = dict(orientation = 'h', y=0.9, x=0.3, yanchor='bottom')
+    fig['layout']['margin'] = dict(t=40, b=40, r=40, l=40)
+    fig['layout']['width'] = 1800
+    fig['layout']['height'] = 1200
+
+    fig['data'].append(dict(x=df.index,
+                            y=df[ohlc],
+                            type='scatter',
+                            mode='lines', 
+                            line = dict( width = 1 ),
+                            marker = dict( color = color_3 ),
+                            yaxis = 'y2',
+                            name=ohlc ) )
+
+    
+    range_buttons_1 = [dict(count=1,
+                            label='1mo',
+                            step='month',
+                            stepmode='backward'),
+                       dict(count=10,
+                            label='10day',
+                            step='day',
+                            stepmode='backward'),
+                       dict(count=5,
+                            label='5day',
+                            step='day',
+                            stepmode='backward'),
+                       ]
+
+    range_buttons_2 = [dict(count=24,
+                            label='24hr',
+                            step='hour',
+                            stepmode='backward'),                      
+                       dict(count=12,
+                            label='12hr',
+                            step='hour',
+                            stepmode='backward'),                      
+                       dict(count=1,
+                            label='1hr',
+                            step='hour',
+                            stepmode='backward'),
+                       dict(count=30,
+                            label='30min',
+                            step='minute',
+                            stepmode='backward'),
+                       dict(count=15,
+                            label='15min',
+                            step='minute',
+                            stepmode='backward'),
+                    ]
+
+    if(freq == 'daily'):
+        range_buttons_all = [dict(count=1,label='reset',step='all')] + range_buttons_1 + [ dict(step='all') ]
+    elif(freq == '15min'):
+        range_buttons_all = [dict(count=1,label='reset',step='all')] + range_buttons_1 + range_buttons_2 + [ dict(step='all') ]
+        
+    rangeselector=dict(
+        visibe = True,
+        x = 0, y = 0.9,
+        bgcolor = 'rgba(150, 200, 250, 0.4)',
+        font = dict( size = 16 ),
+        buttons=list(range_buttons_all))
+
+    fig['layout']['xaxis']['rangeselector'] = rangeselector
+    return(fig)
+    
 def df_to_table(df):
     return(dbc.Table.from_dataframe(df,
                                     bordered=True,
@@ -96,7 +192,7 @@ def df_to_table(df):
 
 def all_common_dates():
     start_date_minute = pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')
-    end_date_minute = pd.to_datetime('2020-06-01 23:59:00').tz_localize('UTC')
+    end_date_minute = pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC')
    
     # find daily dates that are common to all indices (filtering out holdidays included in one market but not the other for example)
     start_date_daily = pd.to_datetime('2020-'"{:02d}"'-'"{:02d}".format(start_date_minute.month,start_date_minute.day))
@@ -323,10 +419,6 @@ def fig_raw_plot(df,freq,index_val,wnd):
     mv_y = movingaverage(df['Close'],window_size=wnd)
     mv_x = list(df.index)
 
-    # Clip the ends
-    # mv_x = mv_x[5:-5]
-    # mv_y = mv_y[5:-5]
-
     fig['data'].append( dict( x=mv_x, y=mv_y, type='scatter', mode='lines', 
                             line = dict( width = 1 ),
                             marker = dict( color = color_3 ),
@@ -438,10 +530,6 @@ def fig_scatter_plot(df,freq,index_val,wnd):
     mv_y = movingaverage(df['H-L'],window_size=wnd)
     mv_x = list(df.index)
 
-    # Clip the ends
-    # mv_x = mv_x[5:-5]
-    # mv_y = mv_y[5:-5]
-
     fig['data'].append(dict(x=mv_x, y=mv_y, type='scatter', mode='lines', 
                             line = dict( width = 1 ),
                             marker = dict( color = color_3 ),
@@ -551,10 +639,6 @@ def fig_bar_plot(df,freq,index_val,wnd):
 
     mv_y = movingstd(df['H-L'],window_size=wnd)
     mv_x = list(df.index)
-
-    # Clip the ends
-    # mv_x = mv_x[5:-5]
-    # mv_y = mv_y[5:-5]
 
     fig['data'].append(dict(x=mv_x, y=mv_y, type='scatter', mode='lines', 
                             line = dict( width = 2 ),
@@ -815,9 +899,6 @@ def fig_dist_comp(index_val_1,index_val_2,df_hk_1,df_hk_2,df_nk_1,df_nk_2,df_sp_
     dct = dict(zip(names,df_names))
     matched = [el[1] for el in dct.items() if((index_val_1,index_val_2)==el[0])][0]
     
-    print(index_val_1,index_val_2)
-    print(matched[0],matched[1])
-
     xx_ret = matched[0][ohlc_1].pct_change().dropna()
     yy_ret = matched[1][ohlc_2].pct_change().dropna()
     xx_log_ret = (np.log(matched[0][ohlc_1]) - np.log(matched[0][ohlc_1].shift(1))).dropna()
@@ -946,7 +1027,7 @@ def table_stats_ohlc(df_hk,df_nk,df_sp,df_eu,ohlc):
     
     # for each daily date take a full 24hr session (for all indices)
     stats_all = []
-    for el in days_all[:3]:
+    for el in days_all:
         sd = pd.to_datetime(str(el.date()) + ' 00:00:00').tz_localize('UTC')
         ed = pd.to_datetime(str(el.date()) + ' 23:59:59').tz_localize('UTC')
         
@@ -974,7 +1055,8 @@ def nav_menu():
             dbc.NavLink("H-L & Volatility", href='/page-4', id='page-4-link', style=STYLE_1),
             dbc.NavLink("Correlations", href='/page-5', id='page-5-link', style=STYLE_1),
             dbc.NavLink("Distribution of returns", href='/page-6', id='page-6-link', style=STYLE_1),
-            dbc.NavLink("Statistics - OHLC", href='/page-7', id='page-7-link', style=STYLE_1)
+            dbc.NavLink("Statistics - OHLC", href='/page-7', id='page-7-link', style=STYLE_1),
+            dbc.NavLink("VWAP", href='/page-8', id='page-8-link', style=STYLE_1)
         ],
         pills=True
         )
@@ -1345,7 +1427,7 @@ def get_layout_7():
     html.Div([
               html.Div([
               html.Div([
-                        html.Div(html.P([html.Br(),html.H5(html.B('First we find all dates that are common to all indices. For each day, a full trading session span is selected. For each daily session and for each market')),html.Br(),html.H5(html.B('day_sess: date of the selected time span')),html.Br(),html.H5(html.B('st_sess: start of the session where the statistics are computed')),html.Br(),html.H5(html.B('ed_sess: end of the session where the statistics are computed')),html.Br(),html.H5(html.B('mdd: Maximum Drawdon during the daily session')),html.Br(),html.H5(html.B('Volatility during the daily session (expressed in %)')),html.Br(),html.H5(html.B('growth: growth of the portfolio (computed as end/start value from the cumulative return -> cumprod((1+return))')),html.Br(),html.H5(html.B('max_ret_time: corresponds to the first time the maximum is reached')),html.Br(),html.H5(html.B('min_ret_time: corresponds to the first time the minimum is reached')),html.Br(),html.H5(html.B('mean_return during the daily session (expressed in %)')),html.Br(),html.H5(html.B('pos_return: shows if session returned positive or negative')),html.Br(),html.H5(html.B('up_ratio: number of up moves / total moves (in returns term, expressed in % of total moves)')),html.Br(),html.H5(html.B('down_ratio: number of down moves / total moves (in returns term, expressed in % of total moves)')),html.Br(),html.H5(html.B('index_market: name of the index')),html.Br(),html.H5(html.B('The table below gives all the statistics relative to returns and can be recalculated for each of the OHLC parameters. The table is also filterable/selectable/deletable and sortable')),html.Br(),html.H5(html.B('In the filter line expression such as ">value" can be written to filter out by specific range'))]), style=STYLE_8)
+                        html.Div(html.P([html.Br(),html.H5(html.B('First we find all dates that are common to all indices. For each day, a full trading session span is selected. For each daily session and for each market')),html.Br(),html.H5(html.B('day_sess: date of the selected time span')),html.Br(),html.H5(html.B('st_sess: start of the session where the statistics are computed')),html.Br(),html.H5(html.B('ed_sess: end of the session where the statistics are computed')),html.Br(),html.H5(html.B('mdd: Maximum Drawdon during the daily session')),html.Br(),html.H5(html.B('Volatility during the daily session (expressed in %)')),html.Br(),html.H5(html.B('growth: growth of the portfolio (computed as end/start value from the cumulative return -> cumprod(1+return)')),html.Br(),html.H5(html.B('max_ret_time: corresponds to the first time the maximum is reached')),html.Br(),html.H5(html.B('min_ret_time: corresponds to the first time the minimum is reached')),html.Br(),html.H5(html.B('mean_return during the daily session (expressed in %)')),html.Br(),html.H5(html.B('pos_return: shows if session returned positive or negative')),html.Br(),html.H5(html.B('up_ratio: number of up moves / total moves (in returns term, expressed in % of total moves)')),html.Br(),html.H5(html.B('down_ratio: number of down moves / total moves (in returns term, expressed in % of total moves)')),html.Br(),html.H5(html.B('index_market: name of the index')),html.Br(),html.H5(html.B('The table below gives all the statistics relative to returns and can be recalculated for each of the OHLC parameters. The table is also filterable/selectable/deletable and sortable')),html.Br(),html.H5(html.B('In the filter line expression such as ">value" can be written to filter out by specific range. Filter queries can be entered in the pop windows and then are automatically translated into full queries which can then be reused.'))]), style=STYLE_8)
                         ]),
                         html.Div([
                                   html.Div(html.H4('OHLC Choice'),style=STYLE_6),
@@ -1392,7 +1474,11 @@ def get_layout_7():
                                       selected_columns=[],
                                       selected_rows=[],
                                       page_action='native',
-                                      page_size = PAGE_SIZE,                                      
+                                      page_size = PAGE_SIZE,
+                                      style_table={
+                                          'width': '75%',
+                                          'minWidth': '75%',
+                                          },
                                       ),
                                   ]),
                         html.Hr(),
@@ -1401,7 +1487,52 @@ def get_layout_7():
                        ])
               ])
     return(html_res)
-    
+
+##########################################################################################################################################################################################
+#                                                                                        layout_8
+##########################################################################################################################################################################################
+def get_layout_8():
+    html_res = \
+    html.Div([
+              html.Div([
+                        html.Div(html.P([html.Br(),html.H5(html.B('We look at the VWAP representation for of the indices'))]), style=STYLE_8)]),
+              html.Div([
+                        html.Div([
+                                  html.Div(html.H4('Frequency'),style=STYLE_6),
+                                  dcc.Dropdown(
+                                      id='vwap-dd-freq',
+                                      options=[{'label': i, 'value': i} for i in ['daily','15min']],
+                                      value='daily',
+                                      style=STYLE_2
+                                      )
+                                      ],style=STYLE_9),
+                        html.Div([
+                                  html.Div(html.H4('Index'),style=STYLE_6),
+                                  dcc.Dropdown(
+                                      id='vwap-dd-index',
+                                      options=[{'label': i, 'value': i} for i in ['Hang Seng','Nikkei225','eMiniSP500','Eurostoxx50']],
+                                      value='Nikkei225',
+                                      style=STYLE_2
+                                      )
+                                      ],style=STYLE_9),
+                        html.Div([
+                                  html.Div(html.H4('OHLC choice'),style=STYLE_6),
+                                  dcc.Dropdown(
+                                      id='vwap-dd-ohlc',
+                                      options=[{'label': i, 'value': i} for i in ['Open','High','Low','Close']],
+                                      value='Close',
+                                      style=STYLE_2
+                                      )
+                                      ],style=STYLE_9),
+                        html.Div([
+                                  dcc.Graph(
+                                      id = 'vwap',
+                                      style=STYLE_4)
+                                      ]),
+                        ]),
+              ])
+    return(html_res)
+
 ###################
 # core of the app #  
 ###################
@@ -1465,12 +1596,10 @@ def read_query(query):
 )
 def display_query(query):
     if query is None:
-        return ''
+        return('')
     return html.Details([
         html.Summary('Derived filter query structure'),
-        html.Div(dcc.Markdown('''```json
-{}
-```'''.format(json.dumps(query, indent=4))))
+        html.Div(dcc.Markdown('''```json{}```'''.format(json.dumps(query, indent=4))))
     ])
     
 ##########################################################################################################################################################################################
@@ -1673,9 +1802,9 @@ page_6_layout = html.Div([ get_layout_6() ])
 )
 def update_fig_6(index_val_1,index_val_2,day_1,month_1,day_2,month_2,ohlc_1,ohlc_2):
     date_1_low = pd.to_datetime('2020-'"{:02d}"'-'"{:02d}".format(month_1,day_1)+' 00:00:00') 
-    date_1_up = pd.to_datetime('2020-'"{:02d}"'-'"{:02d}".format(month_1,day_1)+' 23:59:00') 
+    date_1_up = pd.to_datetime('2020-'"{:02d}"'-'"{:02d}".format(month_1,day_1)+' 23:59:59') 
     date_2_low = pd.to_datetime('2020-'"{:02d}"'-'"{:02d}".format(month_2,day_2)+' 00:00:00')
-    date_2_up = pd.to_datetime('2020-'"{:02d}"'-'"{:02d}".format(month_2,day_2)+' 23:59:00')
+    date_2_up = pd.to_datetime('2020-'"{:02d}"'-'"{:02d}".format(month_2,day_2)+' 23:59:59')
     
     mask_date_hk_1 = (df_hk_minute.index >= date_1_low.tz_localize('UTC')) & (df_hk_minute.index <= date_1_up.tz_localize('UTC'))
     mask_date_hk_2 = (df_hk_minute.index >= date_2_low.tz_localize('UTC')) & (df_hk_minute.index <= date_2_up.tz_localize('UTC'))
@@ -1729,9 +1858,7 @@ def update_graphs(rows, derived_virtual_selected_rows, stats_df):
         derived_virtual_selected_rows = []
     
     dff = pd.read_json(stats_df) if rows is None else pd.DataFrame(rows)
-    
-    colors = ['red' if 'Nikkei225' in dff['index_market'] else '#0074D9' for i in range(len(dff))]
-    # colors = ['#7FDBFF' if i in derived_virtual_selected_rows else '#0074D9' for i in range(len(dff))]
+    colors = ['#7FDBFF' if i in derived_virtual_selected_rows else '#0074D9' for i in range(len(dff))]
 
     return([
             dcc.Graph(
@@ -1771,6 +1898,45 @@ def get_dataframe_stats_0(ohlc):
 def get_dataframe_stats_1(ohlc):
     df_res = table_stats_ohlc(df_hk_minute,df_nikkei_minute,df_spmini500_minute,df_eustoxx50_minute,ohlc)
     return(df_res.to_json())
+
+##########################################################################################################################################################################################
+#                                                                                        page_8
+##########################################################################################################################################################################################
+page_8_layout = html.Div([ get_layout_8() ])
+
+@app.callback(Output('vwap', 'figure'),
+              [Input('vwap-dd-freq','value'),
+               Input('vwap-dd-index', 'value'),
+               Input('vwap-dd-ohlc', 'value')]
+)              
+def update_fig_8(freq,index_val,ohlc):
+    if(freq == 'daily'):
+        mask_hk = (df_hk_daily.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_hk_daily.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
+        df_hk_select = df_hk_daily.loc[mask_hk]
+
+        mask_nikkei = (df_nikkei_daily.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_nikkei_daily.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
+        df_nikkei_select = df_nikkei_daily.loc[mask_nikkei]
+
+        mask_spmini500 = (df_spmini500_daily.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_spmini500_daily.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
+        df_spmini500_select = df_spmini500_daily.loc[mask_spmini500]
+
+        mask_eustoxx50 = (df_eustoxx50_daily.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_eustoxx50_daily.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
+        df_eustoxx50_select = df_eustoxx50_daily.loc[mask_eustoxx50]
+    elif(freq == '15min'):
+        mask_hk = (df_hk_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_hk_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
+        df_hk_select = df_hk_minute.loc[mask_hk]
+
+        mask_nikkei = (df_nikkei_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_nikkei_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
+        df_nikkei_select = df_nikkei_minute.loc[mask_nikkei]
+
+        mask_spmini500 = (df_spmini500_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_spmini500_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
+        df_spmini500_select = df_spmini500_minute.loc[mask_spmini500]
+
+        mask_eustoxx50 = (df_eustoxx50_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_eustoxx50_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
+        df_eustoxx50_select = df_eustoxx50_minute.loc[mask_eustoxx50]
+
+    fig = fig_vwap(df_hk_select,df_nikkei_select,df_spmini500_select,df_eustoxx50_select,freq,index_val,ohlc)
+    return(fig)
     
 ####################################################################################################################################################################################
 #                                                                                            page display                                                                          # 
@@ -1792,6 +1958,8 @@ def display_page(pathname):
         return page_6_layout
     elif pathname == '/page-7':
         return page_7_layout
+    elif pathname == '/page-8':
+        return page_8_layout
 
 if __name__ == '__main__':
     app.run_server(debug=True)
