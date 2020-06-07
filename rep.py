@@ -51,6 +51,7 @@ color_6 = 'black'
 
 INCREASING_COLOR = 'green'
 DECREASING_COLOR = 'red'
+PAGE_SIZE = 100
 
 STYLE_1 = {'font-family': 'Calibri','font-size':50,'width': '33%','display':'inline-block'}
 STYLE_2 = {'font-family': 'Calibri','font-size':18,'width': '50%','display':'inline-block'}
@@ -64,6 +65,7 @@ STYLE_9 = {'width': '33%', 'float': 'left', 'display': 'inline-block'}
 STYLE_10 = {'width': '16.6%', 'float': 'left', 'display': 'inline-block'}
 STYLE_11 = {'height': '200%', 'width': '200%', 'float': 'left', 'padding': 90}
 
+
 def get_data_all():
     obj_reader = DataProcessor('data_in','data_out','conf_model.yml')
     obj_reader.read_prm()
@@ -73,10 +75,24 @@ def get_data_all():
            obj_reader.hk_daily_dates,obj_reader.nikkei_daily_dates,obj_reader.spmini_daily_dates,obj_reader.eu_daily_dates,obj_reader.vix_daily_dates, \
            obj_reader.hk_minute_dates,obj_reader.nikkei_minute_dates,obj_reader.spmini_minute_dates,obj_reader.eu_minute_dates,obj_reader.vix_minute_dates)
 
+####################################################################################################################################################################################
+#                                                                                            raw data                                                                              # 
+####################################################################################################################################################################################
+    
 df_hk_daily, df_nikkei_daily, df_spmini500_daily, df_eustoxx50_daily, df_vix_daily, \
 df_hk_minute, df_nikkei_minute, df_spmini500_minute, df_eustoxx50_minute, df_vix_minute, \
 hk_daily_dates,nikkei_daily_dates,spmini_daily_dates,eu_daily_dates,vix_daily_dates, \
 hk_minute_dates,nikkei_minute_dates,spmini_minute_dates,eu_minute_dates,vix_minute_dates = get_data_all()
+
+#####################################################################################################################################################################################
+
+def df_to_table(df):
+    return(dbc.Table.from_dataframe(df,
+                                    bordered=True,
+                                    dark=False,
+                                    hover=True,
+                                    responsive=True,
+                                    striped=True))
 
 def all_common_dates():
     start_date_minute = pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')
@@ -160,7 +176,7 @@ def mdd(df):
     growth = res1/res2 - 1.0
     return({'mdd': round(mdd * 100.0,3), 'volatility': round(volatility * 100.0,3), 'growth': round(growth * 100.0,3)})
     
-def stats_ohlcv(df_1,df_2,df_3,df_4,day_in,ohlcv):
+def stats_ohlc(df_1,df_2,df_3,df_4,day_in,ohlcv):
     len_df = [ len(df_1), len(df_2), len(df_3), len(df_4) ]
     markets = ['Hang Seng', 'Nikkei225', 'eMiniSP500', 'EuroStoxx50']
 
@@ -185,7 +201,7 @@ def stats_ohlcv(df_1,df_2,df_3,df_4,day_in,ohlcv):
     df_4[ohlcv + '_cum_ret'].iloc[0] = 1.0   
     
     df_res = pd.DataFrame(index=[0,1,2,3],columns=['day_sess','st_sess','ed_sess','mdd','volatility','growth','max_ret_time','min_ret_time',
-                                                   'mean_return','pos_return','up_ratio','down_ratio','index'])
+                                                   'mean_return','pos_return','up_ratio','down_ratio','index_market'])
 
     for i,el in enumerate([df_1,df_2,df_3,df_4]):
         res = mdd(el)
@@ -210,7 +226,7 @@ def stats_ohlcv(df_1,df_2,df_3,df_4,day_in,ohlcv):
         df_res['pos_return'].iloc[i] = res['growth'] > 0.0
         df_res['up_ratio'].iloc[i] = round(100.0 * len(list(filter(lambda x: (x < 0), np.diff(el[ohlcv + '_rate_ret'].values)))) / float(len_df[i] - 1),2)
         df_res['down_ratio'].iloc[i] = round(100.0 * len(list(filter(lambda x: (x >= 0), np.diff(el[ohlcv + '_rate_ret'].values)))) / float(len_df[i] - 1),2)
-        df_res['index'].iloc[i] = markets[i]
+        df_res['index_market'].iloc[i] = markets[i]
 
     return(df_res)
     
@@ -608,7 +624,7 @@ def data_pairplot(df):
 
     if(os.path.exists(filename)):
         image_name=filename
-        with open(image_name, "rb") as f:
+        with open(image_name, 'rb') as f:
             encoded_string = base64.b64encode(f.read()).decode()
         encoded_image = "data:image/png;base64," + encoded_string
     else:
@@ -620,7 +636,7 @@ def data_pairplot(df):
         plt.savefig(filename)
 
         image_name=filename
-        with open(image_name, "rb") as f:
+        with open(image_name, 'rb') as f:
             encoded_string = base64.b64encode(f.read()).decode()
         encoded_image = "data:image/png;base64," + encoded_string
     return(encoded_image)
@@ -925,12 +941,12 @@ def fig_dist_comp(index_val_1,index_val_2,df_hk_1,df_hk_2,df_nk_1,df_nk_2,df_sp_
 
     return(fig_1,fig_2)
 
-def table_stats_ohlcv(df_hk,df_nk,df_sp,df_eu,ohlc):
+def table_stats_ohlc(df_hk,df_nk,df_sp,df_eu,ohlc):
     days_all = all_common_dates()
     
     # for each daily date take a full 24hr session (for all indices)
     stats_all = []
-    for el in days_all:
+    for el in days_all[:3]:
         sd = pd.to_datetime(str(el.date()) + ' 00:00:00').tz_localize('UTC')
         ed = pd.to_datetime(str(el.date()) + ' 23:59:59').tz_localize('UTC')
         
@@ -944,11 +960,11 @@ def table_stats_ohlcv(df_hk,df_nk,df_sp,df_eu,ohlc):
         df_sp_select = df_sp.loc[mask_sp]
         df_eu_select = df_eu.loc[mask_eu]
 
-        stats_all.append(stats_ohlcv(df_hk_select,df_nk_select,df_sp_select,df_eu_select,el,ohlc))
+        stats_all.append(stats_ohlc(df_hk_select,df_nk_select,df_sp_select,df_eu_select,el,ohlc))
 
-    df_all = pd.concat(stats_all,axis=0).round(2)
+    df_all = pd.concat(stats_all,axis=0,ignore_index=True)
     return(df_all)
-    
+   
 def nav_menu():
     nav = dbc.Nav(
         [
@@ -963,15 +979,7 @@ def nav_menu():
         pills=True
         )
     return(nav)
-    
-def df_to_table(df):
-    return(dbc.Table.from_dataframe(df,
-                                    bordered=True,
-                                    dark=False,
-                                    hover=True,
-                                    responsive=True,
-                                    striped=True))
-    
+
 ##########################################################################################################################################################################################
 #                                                                                        layout_1
 ##########################################################################################################################################################################################
@@ -1279,7 +1287,7 @@ def get_layout_6():
                                   dcc.Dropdown(
                                       id='ret-dd-ohlc-1',
                                       options=[{'label': i, 'value': i} for i in ['Open','High','Low','Close']],
-                                      value='High',
+                                      value='Close',
                                       style=STYLE_2
                                       )
                                       ],style=STYLE_10),                        
@@ -1306,7 +1314,7 @@ def get_layout_6():
                                   dcc.Dropdown(
                                       id='ret-dd-ohlc-2',
                                       options=[{'label': i, 'value': i} for i in ['Open','High','Low','Close']],
-                                      value='High',
+                                      value='Close',
                                       style=STYLE_2
                                       )
                                       ],style=STYLE_10),
@@ -1331,42 +1339,66 @@ def get_layout_6():
 
 ##########################################################################################################################################################################################
 #                                                                                        layout_7
-#######################################################################x###################################################################################################################  
+##########################################################################################################################################################################################  
 def get_layout_7():
     html_res = \
     html.Div([
               html.Div([
               html.Div([
-                        html.Div(html.P([html.Br(),html.H5(html.B('First we find all dates that are common to all indices. For each day, a full trading session span is selected. For each daily session and for each market')),html.Br(),html.H5(html.B('day_sess: date of the selected time span')),html.Br(),html.H5(html.B('st_sess: start of the session where the statistics are computed')),html.Br(),html.H5(html.B('ed_sess: end of the session where the statistics are computed')),html.Br(),html.H5(html.B('mdd: Maximum Drawdon during the daily session')),html.Br(),html.H5(html.B('Volatility during the daily session (expressed in %)')),html.Br(),html.H5(html.B('growth: growth of the portfolio (computed as end/start value from the cumulative return -> cumprod((1+return)))')),html.Br(),html.H5(html.B('max_ret_time: corresponds to the first time the maximum is reached')),html.Br(),html.H5(html.B('min_ret_time: corresponds to the first time the minimum is reached')),html.Br(),html.H5(html.B('mean_return during the daily session (expressed in %)')),html.Br(),html.H5(html.B('pos_return: shows if session returned positive or negative')),html.Br(),html.H5(html.B('up_ratio: number of up moves / total moves (in returns term, expressed in % of total moves)')),html.Br(),html.H5(html.B('down_ratio: number of down moves / total moves (in returns term, expressed in % of total moves)')),html.Br(),html.H5(html.B('index: name of the index')),html.Br(),html.H5(html.B('The table below gives all the statistics relative to returns and can be recalculated for each of the OHLC parameters. The table is also filterable/selectable/deletable and sortable')),html.Br(),html.H5(html.B('In the filter line expression such as ">value" can be written to filter out by specific range'))]), style=STYLE_8)
+                        html.Div(html.P([html.Br(),html.H5(html.B('First we find all dates that are common to all indices. For each day, a full trading session span is selected. For each daily session and for each market')),html.Br(),html.H5(html.B('day_sess: date of the selected time span')),html.Br(),html.H5(html.B('st_sess: start of the session where the statistics are computed')),html.Br(),html.H5(html.B('ed_sess: end of the session where the statistics are computed')),html.Br(),html.H5(html.B('mdd: Maximum Drawdon during the daily session')),html.Br(),html.H5(html.B('Volatility during the daily session (expressed in %)')),html.Br(),html.H5(html.B('growth: growth of the portfolio (computed as end/start value from the cumulative return -> cumprod((1+return))')),html.Br(),html.H5(html.B('max_ret_time: corresponds to the first time the maximum is reached')),html.Br(),html.H5(html.B('min_ret_time: corresponds to the first time the minimum is reached')),html.Br(),html.H5(html.B('mean_return during the daily session (expressed in %)')),html.Br(),html.H5(html.B('pos_return: shows if session returned positive or negative')),html.Br(),html.H5(html.B('up_ratio: number of up moves / total moves (in returns term, expressed in % of total moves)')),html.Br(),html.H5(html.B('down_ratio: number of down moves / total moves (in returns term, expressed in % of total moves)')),html.Br(),html.H5(html.B('index_market: name of the index')),html.Br(),html.H5(html.B('The table below gives all the statistics relative to returns and can be recalculated for each of the OHLC parameters. The table is also filterable/selectable/deletable and sortable')),html.Br(),html.H5(html.B('In the filter line expression such as ">value" can be written to filter out by specific range'))]), style=STYLE_8)
                         ]),
                         html.Div([
-                                  html.Div(html.H4('OHLCV Choice'),style=STYLE_6),
+                                  html.Div(html.H4('OHLC Choice'),style=STYLE_6),
                                   dcc.Dropdown(
-                                      id='stats-ohlc',
+                                      id='stats-dd-ohlc',
                                       options=[{'label': i, 'value': i} for i in ['Open','High','Low','Close']],
-                                      value='High',
+                                      value='Close',
                                       style=STYLE_2
                                       )
                                       ],style=STYLE_3),
-              html.Div([
-                        html.Div(html.P([html.Br(),html.H5(html.B('')),html.Br(),html.H5(html.B(''))]), style=STYLE_8)
+                        html.Div([
+                            html.Div(html.P([html.Br(),html.H5(html.B('')),html.Br(),html.H5(html.B(''))]), style=STYLE_8)
+                            ]),
+                        html.Div([
+                                  dcc.RadioItems(
+                                      id='filter-query-read-write',
+                                      options=[
+                                               {'label': 'Read filter_query', 'value': 'read'},
+                                               {'label': 'Write to filter_query', 'value': 'write'}
+                                               ],
+                                      value='read'
+                                      ),
+                                  html.Br(),
+                                  dcc.Input(id='filter-query-input', placeholder='Enter filter query'),
+                                  html.Div(id='filter-query-output'),
+                                  html.Hr()
                         ]),
                         html.Div([
+                                  html.Div(id='stats-table-fig')
+                                  ]),
+                        html.Div([
                                   dash_table.DataTable(
-                                      id = 'stats-table-data',                                                                            
-                                      columns=[{"name": i, "id": i} for i in ['day_session','st_sess','ed_sess','mdd','volatility','growth','max_ret_time','min_ret_time',
-                                       'mean_return','pos_return','up_ratio','down_ratio','index']],
+                                      id = 'stats-table',                                                                            
+                                      columns=[{'name': i, 'id': i, 'deletable': True, 'selectable': True} for i in ['day_sess', 'st_sess', 'ed_sess', 'mdd', 'volatility', 'growth','max_ret_time',
+                                                                                                                     'min_ret_time', 'mean_return', 'pos_return', 'up_ratio', 'down_ratio', 'index_market']],
+                                      data=[],
+                                      editable = True,
                                       filter_action='native',
-                                      sort_action="native",
-                                      sort_mode="multi",
-                                      column_selectable="multi",
-                                      row_selectable="multi",
+                                      sort_action='native',
+                                      sort_mode='multi',
+                                      column_selectable='multi',
+                                      row_selectable='multi',
                                       row_deletable=True,
                                       selected_columns=[],
                                       selected_rows=[],
-                                      )
-                        ])
-                    ])
+                                      page_action='native',
+                                      page_size = PAGE_SIZE,                                      
+                                      ),
+                                  ]),
+                        html.Hr(),
+                        html.Div(id='datatable-query-structure', style={'whitespace': 'pre'}),
+                        html.Div(id='stats-df', style={'display': 'none'})
+                       ])
               ])
     return(html_res)
     
@@ -1393,6 +1425,54 @@ def toggle_active_links(pathname):
         return True, False, False, False, False, False, False
     return [pathname == f"/page-{i}" for i in range(1,8)]
 
+@app.callback(
+    [Output('filter-query-input', 'style'),
+     Output('filter-query-output', 'style')],
+    [Input('filter-query-read-write', 'value')]
+)
+def query_input_output(val):
+    input_style = {'width': '100%'}
+    output_style = {}
+    if val == 'read':
+        input_style.update(display='none')
+        output_style.update(display='inline-block')
+    else:
+        input_style.update(display='inline-block')
+        output_style.update(display='none')
+    return(input_style, output_style)
+
+@app.callback(
+    Output('stats-table', 'filter_query'),
+    [Input('filter-query-input', 'value')]
+)
+def write_query(query):
+    if query is None:
+        return('')
+    return(query)
+
+@app.callback(
+    Output('filter-query-output', 'children'),
+    [Input('stats-table', 'filter_query')]
+)
+def read_query(query):
+    if query is None:
+        return('No filter query')
+    return dcc.Markdown('`filter_query = "{}"`'.format(query))
+
+@app.callback(
+    Output('datatable-query-structure', 'children'),
+    [Input('stats-table', 'derived_filter_query_structure')]
+)
+def display_query(query):
+    if query is None:
+        return ''
+    return html.Details([
+        html.Summary('Derived filter query structure'),
+        html.Div(dcc.Markdown('''```json
+{}
+```'''.format(json.dumps(query, indent=4))))
+    ])
+    
 ##########################################################################################################################################################################################
 #                                                                                        page_1
 ##########################################################################################################################################################################################
@@ -1640,13 +1720,58 @@ def update_fig_6(index_val_1,index_val_2,day_1,month_1,day_2,month_2,ohlc_1,ohlc
 ##########################################################################################################################################################################################
 page_7_layout = html.Div([ get_layout_7() ])
 
-@app.callback(Output('stats-table-data', 'data'),
-              [Input('stats-ohlc', 'value')],
+@app.callback(Output('stats-table-fig', 'children'),
+              [Input('stats-table', 'derived_virtual_data'),
+               Input('stats-table', 'derived_virtual_selected_rows'),
+               Input('stats-df', 'data')])
+def update_graphs(rows, derived_virtual_selected_rows, stats_df):
+    if derived_virtual_selected_rows is None:
+        derived_virtual_selected_rows = []
+    
+    dff = pd.read_json(stats_df) if rows is None else pd.DataFrame(rows)
+    
+    colors = ['red' if 'Nikkei225' in dff['index_market'] else '#0074D9' for i in range(len(dff))]
+    # colors = ['#7FDBFF' if i in derived_virtual_selected_rows else '#0074D9' for i in range(len(dff))]
+
+    return([
+            dcc.Graph(
+                id=column,
+                figure={
+                    'data': [
+                        {
+                            'x': dff['day_sess'],
+                            'y': dff[column],
+                            'type': 'bar',
+                            'marker': {'color': colors},
+                        }
+                        ],
+                    'layout': {
+                        'xaxis': {'automargin': True},
+                        'yaxis': {
+                        'automargin': True,
+                        'title': {'text': column},
+                        'barmode':'stack',
+                        },
+                        'height': 250,
+                        },
+                },
+        )
+        for column in ['mean_return','up_ratio','down_ratio','volatility', 'mdd'] if column in dff])
+
+@app.callback(Output('stats-table', 'data'),
+              [Input('stats-dd-ohlc', 'value')],
 )
-def update_fig_7(ohlc):
-    df_res = table_stats_ohlcv(df_hk_minute,df_nikkei_minute,df_spmini500_minute,df_eustoxx50_minute,ohlc)
+def get_dataframe_stats_0(ohlc):
+    df_res = table_stats_ohlc(df_hk_minute,df_nikkei_minute,df_spmini500_minute,df_eustoxx50_minute,ohlc)
     return(df_res.to_dict('rows'))
 
+@app.callback(Output('stats-df', 'data'),
+              [Input('stats-dd-ohlc', 'value')],
+)
+def get_dataframe_stats_1(ohlc):
+    df_res = table_stats_ohlc(df_hk_minute,df_nikkei_minute,df_spmini500_minute,df_eustoxx50_minute,ohlc)
+    return(df_res.to_json())
+    
 ####################################################################################################################################################################################
 #                                                                                            page display                                                                          # 
 ####################################################################################################################################################################################
