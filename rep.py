@@ -86,7 +86,7 @@ hk_minute_dates,nikkei_minute_dates,spmini_minute_dates,eu_minute_dates,vix_minu
 
 #####################################################################################################################################################################################
 
-def fig_vwap(df_1,df_2,df_3,df_4,freq,index_val,ohlc):
+def fig_vwap(df_1,df_2,df_3,df_4,index_val):
     if(index_val == 'Hang Seng'):
         df = df_1
     elif(index_val == 'Nikkei225'):
@@ -97,19 +97,19 @@ def fig_vwap(df_1,df_2,df_3,df_4,freq,index_val,ohlc):
         df = df_4
 
     q = df['Volume'].values
-    p = df[ohlc].values
+    p = (df['Open'].values+df['Low'].values+df['Close'].values) / 3.0
     df = df.assign(vwap=(p * q).cumsum() / q.cumsum())
     
-    data = [dict(
+    data_vwap = [dict(
         type = 'scatter',
         x = df.index,
         y = df['vwap'],
         yaxis = 'y2',
         name = 'vwap',
-    )]
+        )]
     
     layout = dict()
-    fig = dict(data=data,layout=layout)
+    fig = dict(data=data_vwap,layout=layout)
     
     fig['layout'] = dict()
     fig['layout']['plot_bgcolor'] = 'rgb(250, 250, 250)'
@@ -121,15 +121,20 @@ def fig_vwap(df_1,df_2,df_3,df_4,freq,index_val,ohlc):
     fig['layout']['width'] = 1800
     fig['layout']['height'] = 1200
 
-    fig['data'].append(dict(x=df.index,
-                            y=df[ohlc],
-                            type='scatter',
-                            mode='lines', 
-                            line = dict( width = 1 ),
-                            marker = dict( color = color_3 ),
-                            yaxis = 'y2',
-                            name=ohlc ) )
+    data_ohlc = dict(
+        type = 'candlestick',
+        open = df['Open'],
+        high = df['High'],
+        low = df['Low'],
+        close = df['Close'],
+        x = df.index,
+        yaxis = 'y2',
+        name = index_val,
+        increasing = dict(line = dict( color = INCREASING_COLOR)),
+        decreasing = dict(line = dict( color = DECREASING_COLOR)),
+        )
 
+    fig['data'].append(data_ohlc)
     
     range_buttons_1 = [dict(count=1,
                             label='1mo',
@@ -167,10 +172,7 @@ def fig_vwap(df_1,df_2,df_3,df_4,freq,index_val,ohlc):
                             stepmode='backward'),
                     ]
 
-    if(freq == 'daily'):
-        range_buttons_all = [dict(count=1,label='reset',step='all')] + range_buttons_1 + [ dict(step='all') ]
-    elif(freq == '15min'):
-        range_buttons_all = [dict(count=1,label='reset',step='all')] + range_buttons_1 + range_buttons_2 + [ dict(step='all') ]
+    range_buttons_all = [dict(count=1,label='reset',step='all')] + range_buttons_1 + range_buttons_2 + [ dict(step='all') ]
         
     rangeselector=dict(
         visibe = True,
@@ -1497,15 +1499,15 @@ def get_layout_8():
               html.Div([
                         html.Div(html.P([html.Br(),html.H5(html.B('We look at the VWAP representation for of the indices'))]), style=STYLE_8)]),
               html.Div([
-                        html.Div([
-                                  html.Div(html.H4('Frequency'),style=STYLE_6),
-                                  dcc.Dropdown(
-                                      id='vwap-dd-freq',
-                                      options=[{'label': i, 'value': i} for i in ['daily','15min']],
-                                      value='daily',
-                                      style=STYLE_2
-                                      )
-                                      ],style=STYLE_9),
+                        # html.Div([
+                        #           html.Div(html.H4('Frequency'),style=STYLE_6),
+                        #           dcc.Dropdown(
+                        #               id='vwap-dd-freq',
+                        #               options=[{'label': i, 'value': i} for i in ['daily','15min']],
+                        #               value='daily',
+                        #               style=STYLE_2
+                        #               )
+                        #               ],style=STYLE_9),
                         html.Div([
                                   html.Div(html.H4('Index'),style=STYLE_6),
                                   dcc.Dropdown(
@@ -1514,16 +1516,16 @@ def get_layout_8():
                                       value='Nikkei225',
                                       style=STYLE_2
                                       )
-                                      ],style=STYLE_9),
-                        html.Div([
-                                  html.Div(html.H4('OHLC choice'),style=STYLE_6),
-                                  dcc.Dropdown(
-                                      id='vwap-dd-ohlc',
-                                      options=[{'label': i, 'value': i} for i in ['Open','High','Low','Close']],
-                                      value='Close',
-                                      style=STYLE_2
-                                      )
-                                      ],style=STYLE_9),
+                                      ],style=STYLE_3),
+                        # html.Div([
+                        #           html.Div(html.H4('OHLC choice'),style=STYLE_6),
+                        #           dcc.Dropdown(
+                        #               id='vwap-dd-ohlc',
+                        #               options=[{'label': i, 'value': i} for i in ['Open','High','Low','Close']],
+                        #               value='Close',
+                        #               style=STYLE_2
+                        #               )
+                        #               ],style=STYLE_3),
                         html.Div([
                                   dcc.Graph(
                                       id = 'vwap',
@@ -1905,37 +1907,22 @@ def get_dataframe_stats_1(ohlc):
 page_8_layout = html.Div([ get_layout_8() ])
 
 @app.callback(Output('vwap', 'figure'),
-              [Input('vwap-dd-freq','value'),
-               Input('vwap-dd-index', 'value'),
-               Input('vwap-dd-ohlc', 'value')]
+              [Input('vwap-dd-index', 'value')]
 )              
-def update_fig_8(freq,index_val,ohlc):
-    if(freq == 'daily'):
-        mask_hk = (df_hk_daily.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_hk_daily.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
-        df_hk_select = df_hk_daily.loc[mask_hk]
+def update_fig_8(index_val):
+    mask_hk = (df_hk_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_hk_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
+    df_hk_select = df_hk_minute.loc[mask_hk]
+    
+    mask_nikkei = (df_nikkei_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_nikkei_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
+    df_nikkei_select = df_nikkei_minute.loc[mask_nikkei]
+    
+    mask_spmini500 = (df_spmini500_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_spmini500_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
+    df_spmini500_select = df_spmini500_minute.loc[mask_spmini500]
+    
+    mask_eustoxx50 = (df_eustoxx50_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_eustoxx50_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
+    df_eustoxx50_select = df_eustoxx50_minute.loc[mask_eustoxx50]
 
-        mask_nikkei = (df_nikkei_daily.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_nikkei_daily.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
-        df_nikkei_select = df_nikkei_daily.loc[mask_nikkei]
-
-        mask_spmini500 = (df_spmini500_daily.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_spmini500_daily.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
-        df_spmini500_select = df_spmini500_daily.loc[mask_spmini500]
-
-        mask_eustoxx50 = (df_eustoxx50_daily.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_eustoxx50_daily.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
-        df_eustoxx50_select = df_eustoxx50_daily.loc[mask_eustoxx50]
-    elif(freq == '15min'):
-        mask_hk = (df_hk_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_hk_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
-        df_hk_select = df_hk_minute.loc[mask_hk]
-
-        mask_nikkei = (df_nikkei_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_nikkei_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
-        df_nikkei_select = df_nikkei_minute.loc[mask_nikkei]
-
-        mask_spmini500 = (df_spmini500_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_spmini500_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
-        df_spmini500_select = df_spmini500_minute.loc[mask_spmini500]
-
-        mask_eustoxx50 = (df_eustoxx50_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_eustoxx50_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
-        df_eustoxx50_select = df_eustoxx50_minute.loc[mask_eustoxx50]
-
-    fig = fig_vwap(df_hk_select,df_nikkei_select,df_spmini500_select,df_eustoxx50_select,freq,index_val,ohlc)
+    fig = fig_vwap(df_hk_select,df_nikkei_select,df_spmini500_select,df_eustoxx50_select,index_val)
     return(fig)
     
 ####################################################################################################################################################################################
