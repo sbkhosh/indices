@@ -86,24 +86,40 @@ hk_minute_dates,nikkei_minute_dates,spmini_minute_dates,eu_minute_dates,vix_minu
 
 #####################################################################################################################################################################################
 
-def fig_vwap(df_1,df_2,df_3,df_4,index_val):
+def fig_vwap(df_hk,df_nk,df_sp,df_eu,index_val):
+    days_all = all_common_dates()
+    
     if(index_val == 'Hang Seng'):
-        df = df_1
+        df = df_hk
     elif(index_val == 'Nikkei225'):
-        df = df_2
+        df = df_nk
     elif(index_val == 'eMiniSP500'):
-        df = df_3
+        df = df_sp
     elif(index_val == 'Eurostoxx50'):
-        df = df_4
+        df = df_eu
+        
+    # for each daily date take a full 24hr session (for all indices)
+    vwap_all = []
+    
+    for el in days_all:
+        sd = pd.to_datetime(str(el.date()) + ' 00:00:00').tz_localize('UTC')
+        ed = pd.to_datetime(str(el.date()) + ' 23:59:59').tz_localize('UTC')
+        
+        mask = (df.index >= sd) & (df.index <= ed)
+        df_select = df.loc[mask]
 
-    q = df['Volume'].values
-    p = (df['Open'].values+df['Low'].values+df['Close'].values) / 3.0
-    df = df.assign(vwap=(p * q).cumsum() / q.cumsum())
+        q = df_select['Volume'].values
+        p = (df_select['Open'].values+df_select['Low'].values+df_select['Close'].values) / 3.0
+
+        df_select = df_select.assign(vwap=(p * q).cumsum() / q.cumsum())
+        vwap_all.append(df_select)
+
+    df_all = pd.concat(vwap_all,axis=0)
     
     data_vwap = [dict(
         type = 'scatter',
-        x = df.index,
-        y = df['vwap'],
+        x = df_all.index,
+        y = df_all['vwap'],
         yaxis = 'y2',
         name = 'vwap',
         )]
@@ -1499,15 +1515,6 @@ def get_layout_8():
               html.Div([
                         html.Div(html.P([html.Br(),html.H5(html.B('We look at the VWAP representation for of the indices'))]), style=STYLE_8)]),
               html.Div([
-                        # html.Div([
-                        #           html.Div(html.H4('Frequency'),style=STYLE_6),
-                        #           dcc.Dropdown(
-                        #               id='vwap-dd-freq',
-                        #               options=[{'label': i, 'value': i} for i in ['daily','15min']],
-                        #               value='daily',
-                        #               style=STYLE_2
-                        #               )
-                        #               ],style=STYLE_9),
                         html.Div([
                                   html.Div(html.H4('Index'),style=STYLE_6),
                                   dcc.Dropdown(
@@ -1517,15 +1524,6 @@ def get_layout_8():
                                       style=STYLE_2
                                       )
                                       ],style=STYLE_3),
-                        # html.Div([
-                        #           html.Div(html.H4('OHLC choice'),style=STYLE_6),
-                        #           dcc.Dropdown(
-                        #               id='vwap-dd-ohlc',
-                        #               options=[{'label': i, 'value': i} for i in ['Open','High','Low','Close']],
-                        #               value='Close',
-                        #               style=STYLE_2
-                        #               )
-                        #               ],style=STYLE_3),
                         html.Div([
                                   dcc.Graph(
                                       id = 'vwap',
