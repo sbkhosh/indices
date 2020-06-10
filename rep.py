@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-import colorlover as cl
 import base64
 import dash
 import dash_core_components as dcc
@@ -13,7 +12,6 @@ import json
 import math
 import matplotlib
 import matplotlib.pyplot as plt
-import mplfinance as mpf
 import numpy as np    
 import os
 import pandas as pd
