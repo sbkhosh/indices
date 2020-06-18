@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import base64
+import clusterlib
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -20,13 +21,14 @@ import scipy
 import scipy.cluster.hierarchy as hac
 import statsmodels.api as sm
 import seaborn as sns
+import re
 import sys
 import warnings
 import yaml
 
 from dash.dependencies import Output, Input, State
 from dash.exceptions import PreventUpdate
-from datetime import datetime
+from datetime import datetime, timedelta
 from dt_read import DataProcessor
 from pandas.plotting import register_matplotlib_converters
 from plotly.subplots import make_subplots
@@ -35,7 +37,6 @@ from scipy.cluster.hierarchy import cophenet, fcluster
 from scipy.spatial.distance import pdist
 from statsmodels.sandbox.regression.predstd import wls_prediction_std
 from plotly.figure_factory import create_2d_density
-
 
 warnings.filterwarnings('ignore',category=FutureWarning)
 pd.options.mode.chained_assignment = None 
@@ -63,6 +64,8 @@ STYLE_8 = {'font-family': 'Calibri', 'color': color_6}
 STYLE_9 = {'width': '33%', 'float': 'left', 'display': 'inline-block'}
 STYLE_10 = {'width': '16.6%', 'float': 'left', 'display': 'inline-block'}
 STYLE_11 = {'height': '200%', 'width': '200%', 'float': 'left', 'padding': 90}
+STYLE_12 = {'width': '18%', 'float': 'left', 'display': 'inline-block'}
+STYLE_44 = {'height': '150%', 'width': '150%', 'float': 'left', 'padding': 90}
 
 def get_data_all():
     obj_reader = DataProcessor('data_in','data_out','conf_model.yml')
@@ -73,6 +76,14 @@ def get_data_all():
            obj_reader.hk_daily_dates,obj_reader.nikkei_daily_dates,obj_reader.spmini_daily_dates,obj_reader.eu_daily_dates,obj_reader.vix_daily_dates, \
            obj_reader.hk_minute_dates,obj_reader.nikkei_minute_dates,obj_reader.spmini_minute_dates,obj_reader.eu_minute_dates,obj_reader.vix_minute_dates)
 
+def get_conf_helper():
+    obj_helper = DataProcessor('data_in','data_out','conf_help.yml')
+    obj_helper.read_prm()
+    cut_cluster = obj_helper.conf.get('cut_cluster')
+    cut_cluster_num = obj_helper.conf.get('cut_cluster_num')
+    max_cluster_rep = obj_helper.conf.get('max_cluster_rep')
+    return(cut_cluster,cut_cluster_num,max_cluster_rep)
+
 ####################################################################################################################################################################################
 #                                                                                            raw data                                                                              # 
 ####################################################################################################################################################################################
@@ -81,6 +92,30 @@ df_hk_daily, df_nikkei_daily, df_spmini500_daily, df_eustoxx50_daily, df_vix_dai
 df_hk_minute, df_nikkei_minute, df_spmini500_minute, df_eustoxx50_minute, df_vix_minute, \
 hk_daily_dates,nikkei_daily_dates,spmini_daily_dates,eu_daily_dates,vix_daily_dates, \
 hk_minute_dates,nikkei_minute_dates,spmini_minute_dates,eu_minute_dates,vix_minute_dates = get_data_all()
+cut_cluster, cut_cluster_num, max_cluster_rep = get_conf_helper()
+options_max_cluster = [{'label': i, 'value': i} for i in range(int(max_cluster_rep))]
+
+#####################################################################################################################################################################################
+
+def cluster_draw(df_all, method, metric, max_cluster, selected_cluster, ts_space=5):
+    df_res, Z, ddata, dm = clusterlib.maxclust_draw_rep(df_all.iloc[:,:], method, metric, int(max_cluster), 5)
+
+    filename_0 = 'data_out/max_cluster_draw_'+str(method)+'_'+str(metric)+'_'+str(max_cluster)
+    image_name_0 = filename_0+".png"
+    location_0 = os.getcwd() + '/' + image_name_0
+    with open('%s' %location_0, "rb") as image_file_0:
+        encoded_string_0 = base64.b64encode(image_file_0.read()).decode()
+    encoded_image_0 = "data:image/png;base64," + encoded_string_0
+
+    clusterlib.get_dtw_uniq_cluster(df_res, df_all, method, metric, max_cluster, selected_cluster)
+    filename_5 = 'data_out/dtw_uniq_cluster_draw_'+str(method)+'_'+str(metric)+'_'+str(selected_cluster)
+    image_name_5=filename_5+".png"
+    location_5 = os.getcwd() + '/' + image_name_5
+    with open('%s' %location_5, "rb") as image_file_5:
+        encoded_string_5 = base64.b64encode(image_file_5.read()).decode()
+    encoded_image_5 = "data:image/png;base64," + encoded_string_5
+
+    return(encoded_image_0,df_res,encoded_image_5)
 
 #####################################################################################################################################################################################
 
@@ -197,15 +232,19 @@ def fig_vwap(df_hk,df_nk,df_sp,df_eu,index_val):
 
     fig['layout']['xaxis']['rangeselector'] = rangeselector
     return(fig)
+
+#####################################################################################################################################################################################
     
 def df_to_table(df):
     return(dbc.Table.from_dataframe(df,
                                     bordered=True,
-                                    dark=False,
+                                    dark=True,
                                     hover=True,
                                     responsive=True,
                                     striped=True))
 
+#####################################################################################################################################################################################
+    
 def all_common_dates():
     start_date_minute = pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')
     end_date_minute = pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC')
@@ -237,12 +276,16 @@ def all_common_dates():
     days_all = [pd.to_datetime(el) for el in days_all]
     return(days_all)
 
+#####################################################################################################################################################################################
+    
 def days_inter_df(df,lst_days):
     df_dates = [ '2020-'"{:02d}"'-'"{:02d}".format(el.month,el.day) for el in df.index ]
     elements_in_all = list(set.intersection(*map(set, [df_dates,lst_days])))
     common_days_df = sorted(elements_in_all, key=lambda x: datetime.strptime(x, '%Y-%m-%d'))
     days_df_common = [pd.to_datetime(el) for el in lst_days]
     return(days_df_common)
+
+#####################################################################################################################################################################################
     
 def get_df_choice(freq,index_val,wnd):
     if(freq == 'daily' and index_val=='HangSeng'):
@@ -267,6 +310,8 @@ def get_df_choice(freq,index_val,wnd):
         df = df_vix_minute
     return(df)
 
+#####################################################################################################################################################################################
+    
 def mdd(df):
     df.dropna(inplace=True)
     hwm = [0]
@@ -287,6 +332,8 @@ def mdd(df):
     res2 = df[[el for el in df.columns if 'cum_ret' in el]].iloc[0].values[0]
     growth = res1/res2 - 1.0
     return({'mdd': round(mdd * 100.0,3), 'volatility': round(volatility * 100.0,3), 'growth': round(growth * 100.0,3)})
+
+#####################################################################################################################################################################################
     
 def stats_ohlc(df_1,df_2,df_3,df_4,day_in,ohlcv):
     len_df = [ len(df_1), len(df_2), len(df_3), len(df_4) ]
@@ -341,6 +388,8 @@ def stats_ohlc(df_1,df_2,df_3,df_4,day_in,ohlcv):
         df_res['index_market'].iloc[i] = markets[i]
 
     return(df_res)
+
+#####################################################################################################################################################################################
     
 def movingaverage(df, window_size='30T'):
     return(df.rolling(window=window_size).mean())
@@ -355,6 +404,8 @@ def bbands(price, window_size='30T', num_of_std=2):
     lower_band = rolling_mean - (rolling_std*num_of_std)
     return(rolling_mean, upper_band, lower_band)
 
+#####################################################################################################################################################################################
+    
 def fig_raw_plot(df,freq,index_val,wnd):
     data = [dict(
         type = 'candlestick',
@@ -468,6 +519,8 @@ def fig_raw_plot(df,freq,index_val,wnd):
                             legendgroup='Bollinger Bands', showlegend=False ) )
     return(fig)
 
+#####################################################################################################################################################################################
+    
 def fig_scatter_plot(df,freq,index_val,wnd):
     data = [dict(
         type='scatter',
@@ -579,6 +632,8 @@ def fig_scatter_plot(df,freq,index_val,wnd):
                             legendgroup='Bollinger Bands', showlegend=False ) )
     return(fig)
 
+#####################################################################################################################################################################################
+    
 def fig_bar_plot(df,freq,index_val,wnd):
     data = [dict(
         type='bar',
@@ -718,6 +773,8 @@ def fig_bar_plot(df,freq,index_val,wnd):
         fig_vix = candlestick_plot(df_vix_select,freq,'VIX')
         
     return(fig,fig_hk,fig_nikkei,fig_spmini500,fig_eustoxx50,fig_vix)
+
+#####################################################################################################################################################################################
     
 def data_pairplot(df):
     filename = 'data_out/pairplot.png'
@@ -740,6 +797,8 @@ def data_pairplot(df):
             encoded_string = base64.b64encode(f.read()).decode()
         encoded_image = "data:image/png;base64," + encoded_string
     return(encoded_image)
+
+#####################################################################################################################################################################################
     
 def data_pairheat(df,title,thrs):
     corr_matrix = df.corr()
@@ -776,7 +835,9 @@ def data_pairheat(df,title,thrs):
     fig['layout']['len'] = 1000
 
     return(fig,corr_matrix_filtered)
-   
+
+#####################################################################################################################################################################################
+    
 def data_heatmap(df):
     data = [dict(
         type = 'heatmap',
@@ -810,7 +871,9 @@ def data_heatmap(df):
     fig['layout']['len'] =200    
 
     return(fig)
-   
+
+#####################################################################################################################################################################################
+    
 def candlestick_plot(df,freq,index_val):
     data = [dict(
         type = 'candlestick',
@@ -904,6 +967,8 @@ def candlestick_plot(df,freq,index_val):
                             type='bar', yaxis='y', name='Volume'))
     return(fig)
 
+#####################################################################################################################################################################################
+    
 def fig_dist_comp(index_val_1,index_val_2,df_hk_1,df_hk_2,df_nk_1,df_nk_2,df_sp_1,df_sp_2,df_eu_1,df_eu_2,df_vix_1,df_vix_2,ohlc_1,ohlc_2):
     names = list(itertools.product(['Nikkei225','HangSeng','eMiniSP500','EuroStoxx50','VIX'],repeat = 2))
     df_names = [(df_nk_1, df_nk_2), (df_nk_1, df_hk_2), (df_nk_1, df_sp_2), (df_nk_1, df_eu_2), (df_nk_1, df_vix_2),
@@ -1038,6 +1103,8 @@ def fig_dist_comp(index_val_1,index_val_2,df_hk_1,df_hk_2,df_nk_1,df_nk_2,df_sp_
 
     return(fig_1,fig_2)
 
+#####################################################################################################################################################################################
+    
 def table_stats_ohlc(df_hk,df_nk,df_sp,df_eu,ohlc):
     days_all = all_common_dates()
     
@@ -1061,7 +1128,254 @@ def table_stats_ohlc(df_hk,df_nk,df_sp,df_eu,ohlc):
 
     df_all = pd.concat(stats_all,axis=0,ignore_index=True)
     return(df_all)
-   
+
+#####################################################################################################################################################################################
+    
+def get_all_first_last(df_hk,df_nk,df_sp,df_eu,ohlc,hours_diff):
+    days_all = all_common_dates()
+
+    df_all_last_hang = pd.DataFrame(index=range(len(days_all)),columns=['Dates','growth'])
+    df_all_last_nikkei = pd.DataFrame(index=range(len(days_all)),columns=['Dates','growth'])
+    df_all_last_spmini500 = pd.DataFrame(index=range(len(days_all)),columns=['Dates','growth'])
+    df_all_last_eustoxx50 = pd.DataFrame(index=range(len(days_all)),columns=['Dates','growth'])
+
+    df_all_first_hang = pd.DataFrame(index=range(len(days_all)),columns=['Dates','growth'])
+    df_all_first_nikkei = pd.DataFrame(index=range(len(days_all)),columns=['Dates','growth'])
+    df_all_first_spmini500 = pd.DataFrame(index=range(len(days_all)),columns=['Dates','growth'])
+    df_all_first_eustoxx50 = pd.DataFrame(index=range(len(days_all)),columns=['Dates','growth'])
+    
+    # for each daily date take a full 24hr session (for all indices)
+    for i,el in enumerate(days_all):
+        sd = pd.to_datetime(str(el.date()) + ' 00:00:00').tz_localize('UTC')
+        ed = pd.to_datetime(str(el.date()) + ' 23:59:59').tz_localize('UTC')
+        
+        mask_hang = (df_hk.index >= sd) & (df_hk.index <= ed)
+        mask_nikkei = (df_nk.index >= sd) & (df_nk.index <= ed)
+        mask_spmini500 = (df_sp.index >= sd) & (df_sp.index <= ed)
+        mask_eustoxx50 = (df_eu.index >= sd) & (df_eu.index <= ed)
+
+        df_hang_select = df_hk.loc[mask_hang]
+        df_nikkei_select = df_nk.loc[mask_nikkei]
+        df_spmini500_select = df_sp.loc[mask_spmini500]
+        df_eustoxx50_select = df_eu.loc[mask_eustoxx50]
+
+        df_hang_select['rate_ret'] = df_hang_select[ohlc].pct_change().dropna()
+        df_nikkei_select['rate_ret'] = df_nikkei_select[ohlc].pct_change().dropna()       
+        df_spmini500_select['rate_ret'] = df_spmini500_select[ohlc].pct_change().dropna()       
+        df_eustoxx50_select['rate_ret'] = df_eustoxx50_select[ohlc].pct_change().dropna()
+        
+        # get the last 'hours_diff' hours
+        mask_hang_last = (df_hang_select.index >= df_hang_select.index[-1]-timedelta(hours=hours_diff, minutes=00, seconds=00))
+        mask_nikkei_last = (df_nikkei_select.index >= df_nikkei_select.index[-1]-timedelta(hours=hours_diff, minutes=00, seconds=00))
+        mask_spmini500_last = (df_spmini500_select.index >= df_spmini500_select.index[-1]-timedelta(hours=hours_diff, minutes=00, seconds=00))
+        mask_eustoxx50_last = (df_eustoxx50_select.index >= df_eustoxx50_select.index[-1]-timedelta(hours=hours_diff, minutes=00, seconds=00))
+
+        df_hang_select_last = df_hang_select.loc[mask_hang_last]
+        df_nikkei_select_last = df_nikkei_select.loc[mask_nikkei_last]
+        df_spmini500_select_last = df_spmini500_select.loc[mask_spmini500_last]
+        df_eustoxx50_select_last = df_eustoxx50_select.loc[mask_eustoxx50_last]
+
+        # get cumulative returns of the last 'hours_diff' hours
+        df_hang_select_last['growth'] = (1.0+df_hang_select_last['rate_ret']).cumprod()
+        df_hang_select_last['growth'].iloc[0] = 1
+        res_hang_1 = df_hang_select_last[[el for el in df_hang_select_last.columns if 'growth' in el]].iloc[-1].values[0]
+        res_hang_2 = df_hang_select_last[[el for el in df_hang_select_last.columns if 'growth' in el]].iloc[0].values[0]
+        growth_hang = res_hang_1/res_hang_2 - 1.0
+        
+        df_nikkei_select_last['growth'] = (1.0+df_nikkei_select_last['rate_ret']).cumprod()
+        df_nikkei_select_last['growth'].iloc[0] = 1
+        res_nikkei_1 = df_nikkei_select_last[[el for el in df_nikkei_select_last.columns if 'growth' in el]].iloc[-1].values[0]
+        res_nikkei_2 = df_nikkei_select_last[[el for el in df_nikkei_select_last.columns if 'growth' in el]].iloc[0].values[0]
+        growth_nikkei = res_nikkei_1/res_nikkei_2 - 1.0
+
+        df_spmini500_select_last['growth'] = (1.0+df_spmini500_select_last['rate_ret']).cumprod()
+        df_spmini500_select_last['growth'].iloc[0] = 1
+        res_spmini500_1 = df_spmini500_select_last[[el for el in df_spmini500_select_last.columns if 'growth' in el]].iloc[-1].values[0]
+        res_spmini500_2 = df_spmini500_select_last[[el for el in df_spmini500_select_last.columns if 'growth' in el]].iloc[0].values[0]
+        growth_spmini500 = res_spmini500_1/res_spmini500_2 - 1.0
+
+        df_eustoxx50_select_last['growth'] = (1.0+df_eustoxx50_select_last['rate_ret']).cumprod()
+        df_eustoxx50_select_last['growth'].iloc[0] = 1
+        res_eustoxx50_1 = df_eustoxx50_select_last[[el for el in df_eustoxx50_select_last.columns if 'growth' in el]].iloc[-1].values[0]
+        res_eustoxx50_2 = df_eustoxx50_select_last[[el for el in df_eustoxx50_select_last.columns if 'growth' in el]].iloc[0].values[0]
+        growth_eustoxx50 = res_eustoxx50_1/res_eustoxx50_2 - 1.0
+
+        df_all_last_hang.iloc[i] = ["{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day),growth_hang]
+        df_all_last_nikkei.iloc[i] = ["{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day),growth_nikkei]
+        df_all_last_spmini500.iloc[i] = ["{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day),growth_spmini500]
+        df_all_last_eustoxx50.iloc[i] = ["{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day),growth_eustoxx50]
+
+        # get the first 'hours_diff' hours
+        mask_hang_first = (df_hang_select.index <= df_hang_select.index[0]+timedelta(hours=hours_diff, minutes=00, seconds=00))
+        mask_nikkei_first = (df_nikkei_select.index <= df_nikkei_select.index[0]+timedelta(hours=hours_diff, minutes=00, seconds=00))
+        mask_spmini500_first = (df_spmini500_select.index <= df_spmini500_select.index[0]+timedelta(hours=hours_diff, minutes=00, seconds=00))
+        mask_eustoxx50_first = (df_eustoxx50_select.index <= df_eustoxx50_select.index[0]+timedelta(hours=hours_diff, minutes=00, seconds=00))
+
+        df_hang_select_first = df_hang_select.loc[mask_hang_first]
+        df_nikkei_select_first = df_nikkei_select.loc[mask_nikkei_first]
+        df_spmini500_select_first = df_spmini500_select.loc[mask_spmini500_first]
+        df_eustoxx50_select_first = df_eustoxx50_select.loc[mask_eustoxx50_first]
+
+        # get cumulative returns of the first 'hours_diff' hours
+        df_hang_select_first['growth'] = (1.0+df_hang_select_first['rate_ret']).cumprod()
+        df_hang_select_first['growth'].iloc[0] = 1
+        res_hang_1 = df_hang_select_first[[el for el in df_hang_select_first.columns if 'growth' in el]].iloc[-1].values[0]
+        res_hang_2 = df_hang_select_first[[el for el in df_hang_select_first.columns if 'growth' in el]].iloc[0].values[0]
+        growth_hang = res_hang_1/res_hang_2 - 1.0
+        
+        df_nikkei_select_first['growth'] = (1.0+df_nikkei_select_first['rate_ret']).cumprod()
+        df_nikkei_select_first['growth'].iloc[0] = 1
+        res_nikkei_1 = df_nikkei_select_first[[el for el in df_nikkei_select_first.columns if 'growth' in el]].iloc[-1].values[0]
+        res_nikkei_2 = df_nikkei_select_first[[el for el in df_nikkei_select_first.columns if 'growth' in el]].iloc[0].values[0]
+        growth_nikkei = res_nikkei_1/res_nikkei_2 - 1.0
+
+        df_spmini500_select_first['growth'] = (1.0+df_spmini500_select_first['rate_ret']).cumprod()
+        df_spmini500_select_first['growth'].iloc[0] = 1
+        res_spmini500_1 = df_spmini500_select_first[[el for el in df_spmini500_select_first.columns if 'growth' in el]].iloc[-1].values[0]
+        res_spmini500_2 = df_spmini500_select_first[[el for el in df_spmini500_select_first.columns if 'growth' in el]].iloc[0].values[0]
+        growth_spmini500 = res_spmini500_1/res_spmini500_2 - 1.0
+
+        df_eustoxx50_select_first['growth'] = (1.0+df_eustoxx50_select_first['rate_ret']).cumprod()
+        df_eustoxx50_select_first['growth'].iloc[0] = 1
+        res_eustoxx50_1 = df_eustoxx50_select_first[[el for el in df_eustoxx50_select_first.columns if 'growth' in el]].iloc[-1].values[0]
+        res_eustoxx50_2 = df_eustoxx50_select_first[[el for el in df_eustoxx50_select_first.columns if 'growth' in el]].iloc[0].values[0]
+        growth_eustoxx50 = res_eustoxx50_1/res_eustoxx50_2 - 1.0
+
+        df_all_first_hang.iloc[i] = ["{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day),growth_hang]
+        df_all_first_nikkei.iloc[i] = ["{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day),growth_nikkei]
+        df_all_first_spmini500.iloc[i] = ["{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day),growth_spmini500]
+        df_all_first_eustoxx50.iloc[i] = ["{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day),growth_eustoxx50]
+    
+    df_all_last_hang.set_index('Dates',inplace=True)
+    df_all_last_nikkei.set_index('Dates',inplace=True)
+    df_all_last_spmini500.set_index('Dates',inplace=True)
+    df_all_last_eustoxx50.set_index('Dates',inplace=True)
+
+    df_all_first_hang.set_index('Dates',inplace=True)
+    df_all_first_nikkei.set_index('Dates',inplace=True)
+    df_all_first_spmini500.set_index('Dates',inplace=True)
+    df_all_first_eustoxx50.set_index('Dates',inplace=True)
+
+    return(df_all_last_hang,df_all_last_nikkei,df_all_last_spmini500,df_all_last_eustoxx50,
+           df_all_first_hang,df_all_first_nikkei,df_all_first_spmini500,df_all_first_eustoxx50)
+
+#####################################################################################################################################################################################
+    
+def fig_lag(df_hk,df_nk,df_sp,df_eu,ohlc,hours_diff):
+    df_all_last_hang,df_all_last_nikkei,df_all_last_spmini500,df_all_last_eustoxx50,df_all_first_hang,df_all_first_nikkei,df_all_first_spmini500,df_all_first_eustoxx50 = \
+      get_all_first_last(df_hk,df_nk,df_sp,df_eu,ohlc,hours_diff)
+
+    # dataframe with all data
+    pairs_all = ['Hang_Seng_last','Nikkei225_last','eMiniSP500_last','EuroStoxx50_last',
+                 'Hang_Seng_first','Nikkei225_first','eMiniSP500_first','EuroStoxx50_first']
+
+    df_all_first_last = pd.concat([df_all_last_hang,df_all_last_nikkei,df_all_last_spmini500,df_all_last_eustoxx50,
+                                   df_all_first_hang,df_all_first_nikkei,df_all_first_spmini500,df_all_first_eustoxx50],axis=1)
+    df_all_first_last.columns = pairs_all
+    
+    pairs_comb = [ el[0]+'__'+el[1] for el in list(itertools.combinations(pairs_all,2)) ]
+    pairs_dfs = [(df_all_last_hang, df_all_last_nikkei), (df_all_last_hang, df_all_last_spmini500), (df_all_last_hang, df_all_last_eustoxx50), (df_all_last_hang, df_all_first_hang),
+                 (df_all_last_hang, df_all_first_nikkei), (df_all_last_hang, df_all_first_spmini500), (df_all_last_hang, df_all_first_eustoxx50),(df_all_last_nikkei, df_all_last_spmini500),
+                 (df_all_last_nikkei, df_all_last_eustoxx50), (df_all_last_nikkei, df_all_first_hang), (df_all_last_nikkei, df_all_first_nikkei), (df_all_last_nikkei, df_all_first_spmini500),
+                 (df_all_last_nikkei, df_all_first_eustoxx50), (df_all_last_spmini500, df_all_last_eustoxx50), (df_all_last_spmini500, df_all_first_hang), (df_all_last_spmini500, df_all_first_nikkei),
+                 (df_all_last_spmini500, df_all_first_spmini500), (df_all_last_spmini500, df_all_first_eustoxx50),(df_all_last_eustoxx50, df_all_first_hang), (df_all_last_eustoxx50, df_all_first_nikkei),
+                 (df_all_last_eustoxx50, df_all_first_spmini500), (df_all_last_eustoxx50, df_all_first_eustoxx50), (df_all_first_hang, df_all_first_nikkei), (df_all_first_hang, df_all_first_spmini500),
+                 (df_all_first_hang, df_all_first_eustoxx50), (df_all_first_nikkei, df_all_first_spmini500), (df_all_first_nikkei, df_all_first_eustoxx50), (df_all_first_spmini500, df_all_first_eustoxx50)]
+
+    dct_pairs = dict(zip(pairs_comb,pairs_dfs))
+
+    df_summary = pd.DataFrame(index=pairs_comb,columns=['same direction','opposite direction'])
+    for i,(k,v) in enumerate(dct_pairs.items()):
+        res = np.sign(v[0]['growth'].multiply(v[1]['growth'],axis='index'))
+        df_summary.iloc[i] = [len(res[res==1]),len(res[res==-1])]
+
+    df_summary['pair_1'] = [el.split('__')[0] for el in df_summary.index]
+    df_summary['pair_2'] = [el.split('__')[1] for el in df_summary.index]
+
+    lag_table = df_to_table(df_summary[::-1])
+    
+    # plot results
+    data_1_last = [dict(
+        type = 'bar',
+        x = df_all_last_hang.index,
+        y = df_all_last_hang['growth'],
+        name = 'Hang Seng - Last',
+    )]
+
+    layout = dict()
+    fig = dict(data=data_1_last,layout=layout)
+    
+    fig['layout'] = dict()
+    fig['layout']['plot_bgcolor'] = 'rgb(250, 250, 250)'
+    fig['layout']['xaxis'] = {'automargin': True}
+    fig['layout']['yaxis'] = dict(automargin=True,title='cumulative return')
+    fig['layout']['width'] = 1800
+    fig['layout']['height'] = 1200
+
+    data_2_last = dict(
+        type = 'bar',
+        x = df_all_last_nikkei.index,
+        y = df_all_last_nikkei['growth'],
+        name = 'Nikkei225 - Last',
+    )
+
+    data_3_last = dict(
+        type = 'bar',
+        x = df_all_last_spmini500.index,
+        y = df_all_last_spmini500['growth'],
+        name = 'eMini SP500 - Last',
+    )
+
+    data_4_last = dict(
+        type = 'bar',
+        x = df_all_last_eustoxx50.index,
+        y = df_all_last_eustoxx50['growth'],
+        name = 'Eurostoxx50 - Last',
+    )
+
+    # first
+    data_1_first = dict(
+        type = 'bar',
+        x = df_all_first_hang.index,
+        y = df_all_first_hang['growth'],
+        name = 'Hang Seng - First',
+    )
+    
+    data_2_first = dict(
+        type = 'bar',
+        x = df_all_first_nikkei.index,
+        y = df_all_first_nikkei['growth'],
+        name = 'Nikkei225 - First',
+    )
+
+    data_3_first = dict(
+        type = 'bar',
+        x = df_all_first_spmini500.index,
+        y = df_all_first_spmini500['growth'],
+        name = 'eMini SP500 - First',
+    )
+
+    data_4_first = dict(
+        type = 'bar',
+        x = df_all_first_eustoxx50.index,
+        y = df_all_first_eustoxx50['growth'],
+        name = 'Eurostoxx50 - First',
+    )
+
+    fig['data'].append(data_2_last)
+    fig['data'].append(data_3_last)
+    fig['data'].append(data_4_last)
+    fig['data'].append(data_1_first)
+    fig['data'].append(data_2_first)
+    fig['data'].append(data_3_first)
+    fig['data'].append(data_4_first)
+
+    return(fig,lag_table)
+
+##########################################################################################################################################################################################
+#                                                                                        menu
+##########################################################################################################################################################################################
+    
 def nav_menu():
     nav = dbc.Nav(
         [
@@ -1072,7 +1386,9 @@ def nav_menu():
             dbc.NavLink("Correlations", href='/page-5', id='page-5-link', style=STYLE_1),
             dbc.NavLink("Distribution of returns", href='/page-6', id='page-6-link', style=STYLE_1),
             dbc.NavLink("Statistics - OHLC", href='/page-7', id='page-7-link', style=STYLE_1),
-            dbc.NavLink("VWAP", href='/page-8', id='page-8-link', style=STYLE_1)
+            dbc.NavLink("VWAP", href='/page-8', id='page-8-link', style=STYLE_1),
+            dbc.NavLink("Lag effect", href='/page-9', id='page-9-link', style=STYLE_1),
+            dbc.NavLink("Clustering", href='/page-10', id='page-10-link', style=STYLE_1),
         ],
         pills=True
         )
@@ -1459,7 +1775,7 @@ def get_layout_7():
                             ]),
                         html.Div([
                                   dcc.RadioItems(
-                                      id='filter-query-read-write',
+                                      id='filter-query-read-write-stats',
                                       options=[
                                                {'label': 'Read filter_query', 'value': 'read'},
                                                {'label': 'Write to filter_query', 'value': 'write'}
@@ -1467,8 +1783,8 @@ def get_layout_7():
                                       value='read'
                                       ),
                                   html.Br(),
-                                  dcc.Input(id='filter-query-input', placeholder='Enter filter query'),
-                                  html.Div(id='filter-query-output'),
+                                  dcc.Input(id='filter-query-input-stats', placeholder='Enter filter query'),
+                                  html.Div(id='filter-query-output-stats'),
                                   html.Hr()
                         ]),
                         html.Div([
@@ -1498,7 +1814,7 @@ def get_layout_7():
                                       ),
                                   ]),
                         html.Hr(),
-                        html.Div(id='datatable-query-structure', style={'whitespace': 'pre'}),
+                        html.Div(id='datatable-query-structure-stats', style={'whitespace': 'pre'}),
                         html.Div(id='stats-df', style={'display': 'none'})
                        ])
               ])
@@ -1531,6 +1847,126 @@ def get_layout_8():
               ])
     return(html_res)
 
+##########################################################################################################################################################################################
+#                                                                                        layout_9
+##########################################################################################################################################################################################
+def get_layout_9():
+    html_res = \
+    html.Div([
+              html.Div([
+                        html.Div(html.P([html.Br(),html.H5(html.B('Analysis of lag dependency between indices'))]), style=STYLE_8)]),
+              html.Div([
+                        html.Div([
+                                  html.Div(html.H4('OHLC Choice'),style=STYLE_6),
+                                  dcc.Dropdown(
+                                      id='lag-dd-ohlc',
+                                      options=[{'label': i, 'value': i} for i in ['Open','High','Low','Close']],
+                                      value='Close',
+                                      style=STYLE_2
+                                      )
+                                      ],style=STYLE_9),                        
+                        html.Div([
+                                  html.Div(html.H4('Hours differential'),style=STYLE_6),
+                                  dcc.Dropdown(
+                                      id='lag-dd-hours-diff',
+                                      options=[{'label': i, 'value': i} for i in range(2,12,2)],
+                                      value=2,
+                                      style=STYLE_2
+                                      )
+                                      ],style=STYLE_9),                        
+                        html.Div([
+                                  dcc.Graph(
+                                      id = 'lag-fig',
+                                      style=STYLE_4)
+                                      ]),
+                        html.Div([
+                                  html.Div(
+                                      id='lag-table',
+                                      className='tableDiv'
+                                      )
+                                  ],style=STYLE_4),
+                        ]),
+              ])
+    return(html_res)
+    
+##########################################################################################################################################################################################
+#                                                                                        layout_10
+##########################################################################################################################################################################################
+def get_layout_10():
+    html_res = \
+    html.Div([
+        html.Div([
+            html.Div(html.H6('OHLC choice'),style=STYLE_6),
+            dcc.Dropdown(
+                id='ohlc-dropdown',
+                options=[{'label': i, 'value': i} for i in ['Open','High', 'Low', 'Close']],
+                value='Close',
+                style=STYLE_2
+            )
+            ],style=STYLE_12),
+        html.Div([
+            html.Div(html.H6('Index choice'),style=STYLE_6),
+            dcc.Dropdown(
+                id='index-dropdown',
+                options=[{'label': i, 'value': i} for i in ['Hang Seng','Nikkei225','eMiniSP500','EuroStoxx50']],
+                value='Nikkei225',
+                style=STYLE_2
+            )
+            ],style=STYLE_12),
+        html.Div([
+            html.Div(html.H6('Cluster Method'),style=STYLE_6),
+            dcc.Dropdown(
+                id='method-dropdown',
+                options=[{'label': i, 'value': i} for i in ['single','complete','average','weighted','centroid','median','ward']],
+                value='ward',
+                style=STYLE_2
+            )
+            ],style=STYLE_12),
+        html.Div([
+            html.Div(html.H6('Cluster Metric'),style=STYLE_6),
+            dcc.Dropdown(
+                id='metric-dropdown',
+                options=[{'label': i, 'value': i} for i in ['euclidean','correlation','cosine','dtw']],
+                value='euclidean',
+                style=STYLE_2
+            )
+            ],style=STYLE_12),
+        html.Div([
+            html.Div(html.H6('Cluster max #'),style=STYLE_6),
+            dcc.Dropdown(
+                id='max-cluster-dropdown',
+                options=[{'label': i, 'value': i} for i in range(int(max_cluster_rep))],
+                value='12',
+                style=STYLE_2
+            )
+            ],style=STYLE_12),
+        html.Div([
+            html.Div(html.P([html.Br(),html.Br(),html.Br(),html.Br(),html.Br(),html.H2(html.B('Cluster dendrogram - Clustered time series')),html.Br()]), style=STYLE_8),
+            html.Img(id = 'cluster-plot',
+                           src = '',
+                           style=STYLE_4)
+        ]),
+        html.Div([
+            html.Div(html.H6('Cluster Selected (only select those with cluster_size larger than one for the DTW analysis)'),style=STYLE_6),
+            dcc.Dropdown(
+                id='selected-cluster-dropdown',
+                value='12',
+                style=STYLE_2
+            )
+        ]),
+        html.Div(
+            id='cluster-table',
+            className='tableDiv'
+        ),
+        html.Div([
+            html.Div(html.P([html.Br(),html.H2(html.B('Dynamic time warping distance between pairs from selected cluster. The closer this distance is to 0, the more similar are the pairs'))]), style=STYLE_8),
+            html.Img(id = 'dtws-uniq-plot',
+                           src = '',
+                           style=STYLE_4)
+        ]),
+    ])
+    return(html_res)
+
 ###################
 # core of the app #  
 ###################
@@ -1546,18 +1982,21 @@ app.layout = html.Div([
 )
 
 @app.callback(
-    [Output(f"page-{i}-link", "active") for i in range(1,8)],
+    [Output(f"page-{i}-link", "active") for i in range(1,11)],
     [Input("url", "pathname")],
 )
 def toggle_active_links(pathname):
     if pathname == "/":
-        return True, False, False, False, False, False, False
-    return [pathname == f"/page-{i}" for i in range(1,8)]
+        return(True, False, False, False, False, False, False, False, False, False)
+    return [pathname == f"/page-{i}" for i in range(1,11)]
 
+#################
+# stats queries #  
+#################
 @app.callback(
-    [Output('filter-query-input', 'style'),
-     Output('filter-query-output', 'style')],
-    [Input('filter-query-read-write', 'value')]
+    [Output('filter-query-input-stats', 'style'),
+     Output('filter-query-output-stats', 'style')],
+    [Input('filter-query-read-write-stats', 'value')]
 )
 def query_input_output(val):
     input_style = {'width': '100%'}
@@ -1572,7 +2011,7 @@ def query_input_output(val):
 
 @app.callback(
     Output('stats-table', 'filter_query'),
-    [Input('filter-query-input', 'value')]
+    [Input('filter-query-input-stats', 'value')]
 )
 def write_query(query):
     if query is None:
@@ -1580,7 +2019,7 @@ def write_query(query):
     return(query)
 
 @app.callback(
-    Output('filter-query-output', 'children'),
+    Output('filter-query-output-stats', 'children'),
     [Input('stats-table', 'filter_query')]
 )
 def read_query(query):
@@ -1589,7 +2028,7 @@ def read_query(query):
     return dcc.Markdown('`filter_query = "{}"`'.format(query))
 
 @app.callback(
-    Output('datatable-query-structure', 'children'),
+    Output('datatable-query-structure-stats', 'children'),
     [Input('stats-table', 'derived_filter_query_structure')]
 )
 def display_query(query):
@@ -1599,7 +2038,26 @@ def display_query(query):
         html.Summary('Derived filter query structure'),
         html.Div(dcc.Markdown('''```json{}```'''.format(json.dumps(query, indent=4))))
     ])
-    
+
+@app.callback(
+    Output('selected-cluster-dropdown', 'options'),
+    [Input('max-cluster-dropdown', 'value')]
+)
+def update_cluster_dropdown(max_cluster_val):
+    options=[{'label': opt, 'value': opt} for opt in range(1,int(max_cluster_val)+1)]
+    return(options)
+
+@app.callback(
+    Output('metric-dropdown', 'options'),
+    [Input('method-dropdown', 'value')]
+)
+def update_cluster_dropdown(method_dropdown_val):
+    if(method_dropdown_val == 'centroid' or method_dropdown_val == 'median' or method_dropdown_val == 'ward'):
+        options=[{'label': 'euclidean', 'value':'euclidean'}]
+    else:
+        options=[{'label': opt, 'value': opt} for opt in ['euclidean','correlation','cosine','dtw']]
+    return(options)
+
 ##########################################################################################################################################################################################
 #                                                                                        page_1
 ##########################################################################################################################################################################################
@@ -1910,17 +2368,117 @@ def update_fig_8(index_val):
     df_hk_select = df_hk_minute.loc[mask_hk]
     
     mask_nikkei = (df_nikkei_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_nikkei_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
-    df_nikkei_select = df_nikkei_minute.loc[mask_nikkei]
-    
+    df_nikkei_select = df_nikkei_minute.loc[mask_nikkei].pct_change()
+
     mask_spmini500 = (df_spmini500_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_spmini500_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
-    df_spmini500_select = df_spmini500_minute.loc[mask_spmini500]
+    df_spmini500_select = df_spmini500_minute.loc[mask_spmini500].pct_change().dropna()
     
     mask_eustoxx50 = (df_eustoxx50_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_eustoxx50_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
     df_eustoxx50_select = df_eustoxx50_minute.loc[mask_eustoxx50]
 
     fig = fig_vwap(df_hk_select,df_nikkei_select,df_spmini500_select,df_eustoxx50_select,index_val)
     return(fig)
+
+##########################################################################################################################################################################################
+#                                                                                        page_9
+##########################################################################################################################################################################################
+page_9_layout = html.Div([ get_layout_9() ])
+
+@app.callback([Output('lag-fig', 'figure'),
+               Output('lag-table', 'children')],
+              [Input('lag-dd-ohlc', 'value'),
+               Input('lag-dd-hours-diff', 'value')]
+)              
+def update_fig_9(ohlc,lag_hours):
+    fig, table_lag = fig_lag(df_hk_minute,df_nikkei_minute,df_spmini500_minute,df_eustoxx50_minute,ohlc,lag_hours)
+    return(fig,table_lag)
+
+
+##########################################################################################################################################################################################
+#                                                                                        page_10
+##########################################################################################################################################################################################
+page_10_layout = html.Div([ get_layout_10() ])
+
+@app.callback([Output('cluster-plot', 'src'),
+               Output('cluster-table', 'children'),
+               Output('dtws-uniq-plot', 'src'),
+               ],
+              [Input("index-dropdown", "value"),
+               Input("ohlc-dropdown", "value"),
+               Input("method-dropdown", "value"),
+               Input("metric-dropdown", "value"),
+               Input("max-cluster-dropdown", "value"),
+               Input("selected-cluster-dropdown", "value")
+              ]
+)
+def update_fig_10(index_val,ohlc,method,metric,max_cluster,selected_cluster):
+    days_all = all_common_dates()
     
+    df_hang_select_all = []
+    df_nikkei_select_all = []
+    df_spmini500_select_all = []
+    df_eustoxx50_select_all = []
+    
+    # for each daily date take a full 24hr session (for all indices)
+    for i,el in enumerate(days_all):
+        sd = pd.to_datetime(str(el.date()) + ' 00:00:00').tz_localize('UTC')
+        ed = pd.to_datetime(str(el.date()) + ' 23:59:59').tz_localize('UTC')
+        
+        mask_hang = (df_hk_minute.index >= sd) & (df_hk_minute.index <= ed)
+        mask_nikkei = (df_nikkei_minute.index >= sd) & (df_nikkei_minute.index <= ed)
+        mask_spmini500 = (df_spmini500_minute.index >= sd) & (df_spmini500_minute.index <= ed)
+        mask_eustoxx50 = (df_eustoxx50_minute.index >= sd) & (df_eustoxx50_minute.index <= ed)
+
+        df_hang_select = df_hk_minute.loc[mask_hang]
+        df_nikkei_select = df_nikkei_minute.loc[mask_nikkei]
+        df_spmini500_select = df_spmini500_minute.loc[mask_spmini500]
+        df_eustoxx50_select = df_eustoxx50_minute.loc[mask_eustoxx50]
+
+        df_hang_select['rate_ret'] = df_hang_select[ohlc].pct_change()
+        df_nikkei_select['rate_ret'] = df_nikkei_select[ohlc].pct_change()
+        df_spmini500_select['rate_ret'] = df_spmini500_select[ohlc].pct_change()
+        df_eustoxx50_select['rate_ret'] = df_eustoxx50_select[ohlc].pct_change()
+
+        df_hang_select.dropna(inplace=True)
+        df_nikkei_select.dropna(inplace=True)
+        df_spmini500_select.dropna(inplace=True)
+        df_eustoxx50_select.dropna(inplace=True)
+
+        df_hang_select_all.append(df_hang_select['rate_ret'].T)
+        df_nikkei_select_all.append(df_nikkei_select['rate_ret'].T)
+        df_spmini500_select_all.append(df_spmini500_select['rate_ret'].T)
+        df_eustoxx50_select_all.append(df_eustoxx50_select['rate_ret'].T)
+
+    df_hang_merge = pd.concat(df_hang_select_all,axis=1)
+    df_hang_merge.fillna(0,inplace=True)
+    df_hang_merge.columns = ["{:02d}"'-'"{:02d}".format(el.month,el.day)  for el in days_all ]
+
+    df_nikkei_merge = pd.concat(df_nikkei_select_all,axis=1)
+    df_nikkei_merge.fillna(0,inplace=True)
+    df_nikkei_merge.columns = ["{:02d}"'-'"{:02d}".format(el.month,el.day)  for el in days_all ]
+
+    df_spmini500_merge = pd.concat(df_spmini500_select_all,axis=1)
+    df_spmini500_merge.fillna(0,inplace=True)
+    df_spmini500_merge.columns = ["{:02d}"'-'"{:02d}".format(el.month,el.day)  for el in days_all ]
+
+    df_eustoxx50_merge = pd.concat(df_eustoxx50_select_all,axis=1)
+    df_eustoxx50_merge.fillna(0,inplace=True)
+    df_eustoxx50_merge.columns = ["{:02d}"'-'"{:02d}".format(el.month,el.day)  for el in days_all ]
+    
+    max_cluster = int(max_cluster)
+
+    if(index_val == 'Hang Seng'):
+        encoded_image_0, df_res, encoded_image_5 = cluster_draw(df_hang_merge.T, method, metric, max_cluster, selected_cluster, 5)
+    elif(index_val == 'Nikkei225'):
+        encoded_image_0, df_res, encoded_image_5 = cluster_draw(df_nikkei_merge.T, method, metric, max_cluster, selected_cluster, 5)
+    elif(index_val == 'eMiniSP500'):
+        encoded_image_0, df_res, encoded_image_5 = cluster_draw(df_spmini500_merge.T, method, metric, max_cluster, selected_cluster, 5)
+    elif(index_val == 'EuroStoxx50'):
+        encoded_image_0, df_res, encoded_image_5 = cluster_draw(df_eustoxx50_merge.T, method, metric, max_cluster, selected_cluster, 5)
+            
+    cluster_html_table = df_to_table(df_res)                                                                  
+    return(encoded_image_0, cluster_html_table,encoded_image_5)
+   
 ####################################################################################################################################################################################
 #                                                                                            page display                                                                          # 
 ####################################################################################################################################################################################
@@ -1943,6 +2501,10 @@ def display_page(pathname):
         return page_7_layout
     elif pathname == '/page-8':
         return page_8_layout
+    elif pathname == '/page-9':
+        return page_9_layout
+    elif pathname == '/page-10':
+        return page_10_layout
 
 if __name__ == '__main__':
     app.run_server(debug=True)
