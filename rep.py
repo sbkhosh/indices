@@ -65,7 +65,6 @@ STYLE_9 = {'width': '33%', 'float': 'left', 'display': 'inline-block'}
 STYLE_10 = {'width': '16.6%', 'float': 'left', 'display': 'inline-block'}
 STYLE_11 = {'height': '200%', 'width': '200%', 'float': 'left', 'padding': 90}
 STYLE_12 = {'width': '18%', 'float': 'left', 'display': 'inline-block'}
-STYLE_44 = {'height': '150%', 'width': '150%', 'float': 'left', 'padding': 90}
 
 def get_data_all():
     obj_reader = DataProcessor('data_in','data_out','conf_model.yml')
@@ -108,14 +107,14 @@ def cluster_draw(df_all, method, metric, max_cluster, selected_cluster, ts_space
     encoded_image_0 = "data:image/png;base64," + encoded_string_0
 
     clusterlib.get_dtw_uniq_cluster(df_res, df_all, method, metric, max_cluster, selected_cluster)
-    filename_5 = 'data_out/dtw_uniq_cluster_draw_'+str(method)+'_'+str(metric)+'_'+str(selected_cluster)
-    image_name_5=filename_5+".png"
-    location_5 = os.getcwd() + '/' + image_name_5
-    with open('%s' %location_5, "rb") as image_file_5:
-        encoded_string_5 = base64.b64encode(image_file_5.read()).decode()
-    encoded_image_5 = "data:image/png;base64," + encoded_string_5
+    filename_1 = 'data_out/dtw_uniq_cluster_draw_'+str(method)+'_'+str(metric)+'_'+str(selected_cluster)
+    image_name_1=filename_1+".png"
+    location_1 = os.getcwd() + '/' + image_name_1
+    with open('%s' %location_1, "rb") as image_file_1:
+        encoded_string_1 = base64.b64encode(image_file_1.read()).decode()
+    encoded_image_1 = "data:image/png;base64," + encoded_string_1
 
-    return(encoded_image_0,df_res,encoded_image_5)
+    return(encoded_image_0,df_res,encoded_image_1)
 
 #####################################################################################################################################################################################
 
@@ -259,15 +258,13 @@ def all_common_dates():
     days_eu = pd.DataFrame(eu_daily_dates[eu_daily_dates >= start_date_daily])
 
     tmp_hk = [ pd.to_datetime(el) for el in days_hk['Dates'].values ]
-    days_hk_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_hk ]
-
     tmp_nk = [ pd.to_datetime(el) for el in days_nk['Dates'].values ]
-    days_nk_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_nk ]
-
     tmp_sp = [ pd.to_datetime(el) for el in days_sp['Dates'].values ]
-    days_sp_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_sp ]
-
     tmp_eu = [ pd.to_datetime(el) for el in days_eu['Dates'].values ]
+
+    days_hk_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_hk ]
+    days_nk_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_nk ]
+    days_sp_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_sp ]
     days_eu_filter = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in tmp_eu ]
     
     elements_in_all = list(set.intersection(*map(set, [days_hk_filter,days_nk_filter,days_sp_filter,days_eu_filter])))
@@ -275,15 +272,6 @@ def all_common_dates():
     days_all = sorted(elements_in_all, key=lambda x: datetime.strptime(x, '%Y-%m-%d'))
     days_all = [pd.to_datetime(el) for el in days_all]
     return(days_all)
-
-#####################################################################################################################################################################################
-    
-def days_inter_df(df,lst_days):
-    df_dates = [ '2020-'"{:02d}"'-'"{:02d}".format(el.month,el.day) for el in df.index ]
-    elements_in_all = list(set.intersection(*map(set, [df_dates,lst_days])))
-    common_days_df = sorted(elements_in_all, key=lambda x: datetime.strptime(x, '%Y-%m-%d'))
-    days_df_common = [pd.to_datetime(el) for el in lst_days]
-    return(days_df_common)
 
 #####################################################################################################################################################################################
     
@@ -1936,7 +1924,7 @@ def get_layout_10():
             dcc.Dropdown(
                 id='max-cluster-dropdown',
                 options=[{'label': i, 'value': i} for i in range(int(max_cluster_rep))],
-                value='12',
+                value=12,
                 style=STYLE_2
             )
             ],style=STYLE_12),
@@ -1950,7 +1938,7 @@ def get_layout_10():
             html.Div(html.H6('Cluster Selected (only select those with cluster_size larger than one for the DTW analysis)'),style=STYLE_6),
             dcc.Dropdown(
                 id='selected-cluster-dropdown',
-                value='12',
+                value=12,
                 style=STYLE_2
             )
         ]),
@@ -2187,33 +2175,27 @@ page_5_layout = html.Div([ get_layout_5() ])
 def update_fig_5(freq,vthreshold):
     if(freq == 'daily'):
         mask_hk = (df_hk_daily.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_hk_daily.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
-        df_hk_select = df_hk_daily.loc[mask_hk]
-
         mask_nikkei = (df_nikkei_daily.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_nikkei_daily.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
-        df_nikkei_select = df_nikkei_daily.loc[mask_nikkei]
-
         mask_spmini500 = (df_spmini500_daily.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_spmini500_daily.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
-        df_spmini500_select = df_spmini500_daily.loc[mask_spmini500]
-
         mask_eustoxx50 = (df_eustoxx50_daily.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_eustoxx50_daily.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
-        df_eustoxx50_select = df_eustoxx50_daily.loc[mask_eustoxx50]
-
         mask_vix= (df_vix_daily.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_vix_daily.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
+
+        df_hk_select = df_hk_daily.loc[mask_hk]
+        df_nikkei_select = df_nikkei_daily.loc[mask_nikkei]
+        df_spmini500_select = df_spmini500_daily.loc[mask_spmini500]
+        df_eustoxx50_select = df_eustoxx50_daily.loc[mask_eustoxx50]
         df_vix_select = df_vix_daily.loc[mask_vix]
     elif(freq == '15min'):
         mask_hk = (df_hk_minute.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_hk_minute.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
-        df_hk_select = df_hk_minute.loc[mask_hk]
-
         mask_nikkei = (df_nikkei_minute.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_nikkei_minute.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
-        df_nikkei_select = df_nikkei_minute.loc[mask_nikkei]
-
         mask_spmini500 = (df_spmini500_minute.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_spmini500_minute.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
-        df_spmini500_select = df_spmini500_minute.loc[mask_spmini500]
-
         mask_eustoxx50 = (df_eustoxx50_minute.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_eustoxx50_minute.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
-        df_eustoxx50_select = df_eustoxx50_minute.loc[mask_eustoxx50]
-
         mask_vix= (df_vix_minute.index >= pd.to_datetime('2020-05-09 00:00:00').tz_localize('UTC')) & (df_vix_minute.index < pd.to_datetime('2020-05-23 00:00:00').tz_localize('UTC'))
+
+        df_nikkei_select = df_nikkei_minute.loc[mask_nikkei]
+        df_hk_select = df_hk_minute.loc[mask_hk]
+        df_spmini500_select = df_spmini500_minute.loc[mask_spmini500]
+        df_eustoxx50_select = df_eustoxx50_minute.loc[mask_eustoxx50]
         df_vix_select = df_vix_minute.loc[mask_vix]
         
     df_hk_select.columns = [ el+'_hk' for el in df_hk_select.columns ]
@@ -2365,15 +2347,13 @@ page_8_layout = html.Div([ get_layout_8() ])
 )              
 def update_fig_8(index_val):
     mask_hk = (df_hk_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_hk_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
-    df_hk_select = df_hk_minute.loc[mask_hk]
-    
     mask_nikkei = (df_nikkei_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_nikkei_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
-    df_nikkei_select = df_nikkei_minute.loc[mask_nikkei].pct_change()
-
     mask_spmini500 = (df_spmini500_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_spmini500_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
-    df_spmini500_select = df_spmini500_minute.loc[mask_spmini500].pct_change().dropna()
-    
     mask_eustoxx50 = (df_eustoxx50_minute.index >= pd.to_datetime('2020-01-06 00:00:00').tz_localize('UTC')) & (df_eustoxx50_minute.index < pd.to_datetime('2020-06-01 23:59:59').tz_localize('UTC'))
+
+    df_hk_select = df_hk_minute.loc[mask_hk]
+    df_nikkei_select = df_nikkei_minute.loc[mask_nikkei].pct_change()
+    df_spmini500_select = df_spmini500_minute.loc[mask_spmini500].pct_change().dropna()
     df_eustoxx50_select = df_eustoxx50_minute.loc[mask_eustoxx50]
 
     fig = fig_vwap(df_hk_select,df_nikkei_select,df_spmini500_select,df_eustoxx50_select,index_val)
@@ -2392,7 +2372,6 @@ page_9_layout = html.Div([ get_layout_9() ])
 def update_fig_9(ohlc,lag_hours):
     fig, table_lag = fig_lag(df_hk_minute,df_nikkei_minute,df_spmini500_minute,df_eustoxx50_minute,ohlc,lag_hours)
     return(fig,table_lag)
-
 
 ##########################################################################################################################################################################################
 #                                                                                        page_10
@@ -2450,34 +2429,31 @@ def update_fig_10(index_val,ohlc,method,metric,max_cluster,selected_cluster):
         df_eustoxx50_select_all.append(df_eustoxx50_select['rate_ret'].T)
 
     df_hang_merge = pd.concat(df_hang_select_all,axis=1)
-    df_hang_merge.fillna(0,inplace=True)
-    df_hang_merge.columns = ["{:02d}"'-'"{:02d}".format(el.month,el.day)  for el in days_all ]
-
     df_nikkei_merge = pd.concat(df_nikkei_select_all,axis=1)
-    df_nikkei_merge.fillna(0,inplace=True)
-    df_nikkei_merge.columns = ["{:02d}"'-'"{:02d}".format(el.month,el.day)  for el in days_all ]
-
     df_spmini500_merge = pd.concat(df_spmini500_select_all,axis=1)
-    df_spmini500_merge.fillna(0,inplace=True)
-    df_spmini500_merge.columns = ["{:02d}"'-'"{:02d}".format(el.month,el.day)  for el in days_all ]
-
     df_eustoxx50_merge = pd.concat(df_eustoxx50_select_all,axis=1)
+
+    df_hang_merge.fillna(0,inplace=True)
+    df_nikkei_merge.fillna(0,inplace=True)
+    df_spmini500_merge.fillna(0,inplace=True)
     df_eustoxx50_merge.fillna(0,inplace=True)
+
+    df_hang_merge.columns = ["{:02d}"'-'"{:02d}".format(el.month,el.day)  for el in days_all ]
+    df_nikkei_merge.columns = ["{:02d}"'-'"{:02d}".format(el.month,el.day)  for el in days_all ]
+    df_spmini500_merge.columns = ["{:02d}"'-'"{:02d}".format(el.month,el.day)  for el in days_all ]
     df_eustoxx50_merge.columns = ["{:02d}"'-'"{:02d}".format(el.month,el.day)  for el in days_all ]
     
-    max_cluster = int(max_cluster)
-
     if(index_val == 'Hang Seng'):
-        encoded_image_0, df_res, encoded_image_5 = cluster_draw(df_hang_merge.T, method, metric, max_cluster, selected_cluster, 5)
+        encoded_image_0, df_res, encoded_image_1 = cluster_draw(df_hang_merge.T, method, metric, max_cluster, selected_cluster, 5)
     elif(index_val == 'Nikkei225'):
-        encoded_image_0, df_res, encoded_image_5 = cluster_draw(df_nikkei_merge.T, method, metric, max_cluster, selected_cluster, 5)
+        encoded_image_0, df_res, encoded_image_1 = cluster_draw(df_nikkei_merge.T, method, metric, max_cluster, selected_cluster, 5)
     elif(index_val == 'eMiniSP500'):
-        encoded_image_0, df_res, encoded_image_5 = cluster_draw(df_spmini500_merge.T, method, metric, max_cluster, selected_cluster, 5)
+        encoded_image_0, df_res, encoded_image_1 = cluster_draw(df_spmini500_merge.T, method, metric, max_cluster, selected_cluster, 5)
     elif(index_val == 'EuroStoxx50'):
-        encoded_image_0, df_res, encoded_image_5 = cluster_draw(df_eustoxx50_merge.T, method, metric, max_cluster, selected_cluster, 5)
+        encoded_image_0, df_res, encoded_image_1 = cluster_draw(df_eustoxx50_merge.T, method, metric, max_cluster, selected_cluster, 5)
             
     cluster_html_table = df_to_table(df_res)                                                                  
-    return(encoded_image_0, cluster_html_table,encoded_image_5)
+    return(encoded_image_0, cluster_html_table,encoded_image_1)
    
 ####################################################################################################################################################################################
 #                                                                                            page display                                                                          # 

@@ -13,3 +13,7 @@ dash_bootstrap_components==0.10.2
 PyYAML==5.3.1
 ta==0.5.25
 yahoofinancials==1.5
+fastdtw==0.3.4
+joblib==0.15.1
+scikit-learn==0.22
+dtaidistance==1.2.3
