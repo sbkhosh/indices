@@ -48,7 +48,6 @@ class DataProcessor():
             
         cols_daily = [ 'Open','High','Low','Close','Volume' ]
         cols_minute = [ 'Open','Close','High','Low','Volume' ]
-
         
         vix_index_daily = self.data[4][headers_num[0]].dropna()
         eu_index_daily = self.data[3][headers_num[0]].dropna()

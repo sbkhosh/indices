@@ -9,6 +9,7 @@ import numpy as np
 import os
 import pandas as pd
 import plotly.graph_objects as go
+import statsmodels.tsa.stattools as ts
 import ta
 import time
 import yaml
@@ -67,3 +68,14 @@ class Helper():
     def view_data(data):
         print(data.head())
 
+    @staticmethod
+    def adfuller_test(series):
+        cmpr_t = lambda t, ctr_1, ctr_2, ctr_3: 'Stationary' if (t <= ctr_1, t <= ctr_2, t <= ctr_3) else 'Non-stationary'
+        cmpr_p = lambda p: 'Stationary' if (p < 0.01) else 'Non-stationary'
+        
+        r = ts.adfuller(series,autolag='AIC')
+        output = {'test_statistic': round(r[0],4), 'pvalue': round(r[1],4), 'n_lags': round(r[2],4), 'n_obs': r[3],
+                  'Critical value (1%)': round(r[4]['1%'],4), 'Critical value (5%)': round(r[4]['5%'],4), 'Critical value (10%)': round(r[4]['10%'],4),
+                  'State (critical values)': cmpr_t(round(r[1],4),round(r[4]['1%'],4),round(r[4]['5%'],4),round(r[4]['10%'],4)),
+                  'State (p-value)': cmpr_p(round(r[1],4))}
+        return(output)

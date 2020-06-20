@@ -29,6 +29,7 @@ import yaml
 from dash.dependencies import Output, Input, State
 from dash.exceptions import PreventUpdate
 from datetime import datetime, timedelta
+from dt_help import Helper
 from dt_read import DataProcessor
 from pandas.plotting import register_matplotlib_converters
 from plotly.subplots import make_subplots
@@ -41,7 +42,9 @@ from plotly.figure_factory import create_2d_density
 warnings.filterwarnings('ignore',category=FutureWarning)
 pd.options.mode.chained_assignment = None 
 register_matplotlib_converters()
-   
+
+N_PAGES = 11
+
 color_1 = '#c0b8c3'
 color_2 = '#3e75cf'
 color_3 = '#42483f'
@@ -65,6 +68,7 @@ STYLE_9 = {'width': '33%', 'float': 'left', 'display': 'inline-block'}
 STYLE_10 = {'width': '16.6%', 'float': 'left', 'display': 'inline-block'}
 STYLE_11 = {'height': '200%', 'width': '200%', 'float': 'left', 'padding': 90}
 STYLE_12 = {'width': '18%', 'float': 'left', 'display': 'inline-block'}
+STYLE_13 = {'height': '100%', 'width': '100%', 'float': 'left', 'padding': -100}
 
 def get_data_all():
     obj_reader = DataProcessor('data_in','data_out','conf_model.yml')
@@ -1360,26 +1364,86 @@ def fig_lag(df_hk,df_nk,df_sp,df_eu,ohlc,hours_diff):
 
     return(fig,lag_table)
 
+def fig_adf(df_1,df_2,df_3,df_4):
+    labels = ['Stationary','Non-Stationary']
+    data_1 = [dict(
+        type = 'bar',
+        x = df_1['Dates'],
+        y = df_1['State (p-value)'],
+        name = 'Hang Seng',
+    )]
+
+    layout_1 = dict()
+    fig_1 = dict(data=data_1,layout=layout_1)
+    
+    fig_1['layout'] = dict()
+    fig_1['layout']['plot_bgcolor'] = 'rgb(250, 250, 250)'
+    fig_1['layout']['xaxis'] = {'automargin': True}
+    fig_1['layout']['yaxis'] = dict(automargin=True,title='')
+    fig_1['layout']['width'] = 1800
+    fig_1['layout']['height'] = 300
+
+    data_2 = [dict(
+        type = 'bar',
+        x = df_2['Dates'],
+        y = df_2['State (p-value)'],
+        name = 'Nikkei225',
+    )]
+
+    layout_2 = dict()
+    fig_2 = dict(data=data_2,layout=layout_2)
+    
+    fig_2['layout'] = dict()
+    fig_2['layout']['plot_bgcolor'] = 'rgb(250, 250, 250)'
+    fig_2['layout']['xaxis'] = {'automargin': True}
+    fig_2['layout']['yaxis'] = dict(automargin=True,title='')
+    fig_2['layout']['width'] = 1800
+    fig_2['layout']['height'] = 300
+    
+    data_3 = [dict(
+        type = 'bar',
+        x = df_3['Dates'],
+        y = df_3['State (p-value)'],
+        name = 'eMini SP500',
+    )]
+
+    layout_3 = dict()
+    fig_3 = dict(data=data_3,layout=layout_3)
+    
+    fig_3['layout'] = dict()
+    fig_3['layout']['plot_bgcolor'] = 'rgb(250, 250, 250)'
+    fig_3['layout']['xaxis'] = {'automargin': True}
+    fig_3['layout']['yaxis'] = dict(automargin=True,title='')
+    fig_3['layout']['width'] = 1800
+    fig_3['layout']['height'] = 300
+    
+    data_4 = [dict(
+        type = 'bar',
+        x = df_4['Dates'],
+        y = df_4['State (p-value)'],
+        name = 'Eurostoxx50',
+    )]
+
+    layout_4 = dict()
+    fig_4 = dict(data=data_4,layout=layout_4)
+    
+    fig_4['layout'] = dict()
+    fig_4['layout']['plot_bgcolor'] = 'rgb(250, 250, 250)'
+    fig_4['layout']['xaxis'] = {'automargin': True}
+    fig_4['layout']['yaxis'] = dict(automargin=True,title='')
+    fig_4['layout']['width'] = 1800
+    fig_4['layout']['height'] = 300
+    
+    return(fig_1,fig_2,fig_3,fig_4)
+
 ##########################################################################################################################################################################################
 #                                                                                        menu
 ##########################################################################################################################################################################################
     
 def nav_menu():
-    nav = dbc.Nav(
-        [
-            dbc.NavLink("Raw plots", href='/page-1', id='page-1-link', style=STYLE_1),
-            dbc.NavLink("Volume", href='/page-2', id='page-2-link', style=STYLE_1),
-            dbc.NavLink("H-L & Volume", href='/page-3', id='page-3-link', style=STYLE_1),
-            dbc.NavLink("H-L & Volatility", href='/page-4', id='page-4-link', style=STYLE_1),
-            dbc.NavLink("Correlations", href='/page-5', id='page-5-link', style=STYLE_1),
-            dbc.NavLink("Distribution of returns", href='/page-6', id='page-6-link', style=STYLE_1),
-            dbc.NavLink("Statistics - OHLC", href='/page-7', id='page-7-link', style=STYLE_1),
-            dbc.NavLink("VWAP", href='/page-8', id='page-8-link', style=STYLE_1),
-            dbc.NavLink("Lag effect", href='/page-9', id='page-9-link', style=STYLE_1),
-            dbc.NavLink("Clustering", href='/page-10', id='page-10-link', style=STYLE_1),
-        ],
-        pills=True
-        )
+    title_all = ["Raw plots", "Volume","H-L & Volume","H-L & Volatility","Correlations","Distribution of returns","Statistics - OHLC","VWAP","Lag effect","Clustering","Statistical tests"]
+    links_all = [ dbc.NavLink(el, href='/page-'+str(i+1), id='page-'+str(i+1)+'-link', style=STYLE_1) for i,el in enumerate(title_all) ] 
+    nav = dbc.Nav(links_all,pills=True)
     return(nav)
 
 ##########################################################################################################################################################################################
@@ -1955,6 +2019,66 @@ def get_layout_10():
     ])
     return(html_res)
 
+
+##########################################################################################################################################################################################
+#                                                                                        layout_11
+##########################################################################################################################################################################################
+def get_layout_11():
+    html_res = \
+    html.Div([
+        html.Div([
+            html.Div(html.H6('OHLC choice'),style=STYLE_6),
+            dcc.Dropdown(
+                id='ohlc-tests',
+                options=[{'label': i, 'value': i} for i in ['Open','High', 'Low', 'Close']],
+                value='Close',
+                style=STYLE_2
+            )
+            ],style=STYLE_12),
+    html.Div(html.P([html.Br(),html.Br(),html.Br(),html.Br(),html.Br(),html.Br(),html.H2(html.B('Augmented Dickey-Fuller test for stationarity'))]), style=STYLE_8),
+    html.Div([
+              html.Div(html.P([html.Br(),html.Br(),html.Br(),html.Br(),html.H2(html.B('Hang Seng'))]), style=STYLE_8),
+              dcc.Graph(
+                  id = 'adf-fig-1',
+                  style=STYLE_13)
+              ]),
+    html.Div([
+              html.Div(html.P([html.Br(),html.H2(html.B('Nikkei225'))]), style=STYLE_8),
+              dcc.Graph(
+                  id = 'adf-fig-2',
+                  style=STYLE_13)
+              ]),
+    html.Div([
+              html.Div(html.P([html.Br(),html.H2(html.B('eMiniSP500'))]), style=STYLE_8),
+              dcc.Graph(
+                  id = 'adf-fig-3',
+                  style=STYLE_13),
+              ]),
+    html.Div([
+              html.Div(html.P([html.Br(),html.H2(html.B('EuroStoxx50'))]), style=STYLE_8),
+              dcc.Graph(
+                  id = 'adf-fig-4',
+                  style=STYLE_13)
+              ]),
+    html.Div(
+        id='adf-table-1',
+        className='tableDiv'
+        ),
+    html.Div(
+        id='adf-table-2',
+        className='tableDiv'
+        ),
+    html.Div(
+        id='adf-table-3',
+        className='tableDiv'
+        ),
+    html.Div(
+        id='adf-table-4',
+        className='tableDiv'
+        ),
+    ])
+    return(html_res)
+    
 ###################
 # core of the app #  
 ###################
@@ -1970,13 +2094,13 @@ app.layout = html.Div([
 )
 
 @app.callback(
-    [Output(f"page-{i}-link", "active") for i in range(1,11)],
+    [Output(f"page-{i}-link", "active") for i in range(1,N_PAGES+1)],
     [Input("url", "pathname")],
 )
 def toggle_active_links(pathname):
-    if pathname == "/":
-        return(True, False, False, False, False, False, False, False, False, False)
-    return [pathname == f"/page-{i}" for i in range(1,11)]
+    # if pathname == "/":
+    #     return((True,)+(False,)*(N_PAGES-1))
+    return [pathname == f"/page-{i}" for i in range(1,N_PAGES+1)]
 
 #################
 # stats queries #  
@@ -2454,6 +2578,78 @@ def update_fig_10(index_val,ohlc,method,metric,max_cluster,selected_cluster):
             
     cluster_html_table = df_to_table(df_res)                                                                  
     return(encoded_image_0, cluster_html_table,encoded_image_1)
+
+##########################################################################################################################################################################################
+#                                                                                        page_11
+##########################################################################################################################################################################################
+page_11_layout = html.Div([ get_layout_11() ])
+
+@app.callback([Output('adf-fig-1', 'figure'),
+               Output('adf-fig-2', 'figure'),
+               Output('adf-fig-3', 'figure'),
+               Output('adf-fig-4', 'figure'),
+               Output('adf-table-1', 'children'),
+               Output('adf-table-2', 'children'),
+               Output('adf-table-3', 'children'),
+               Output('adf-table-4', 'children')],
+              [Input("ohlc-tests", "value")]
+)
+def update_fig_11(ohlc):
+    days_all = all_common_dates()
+    
+    df_hang_select_all = []
+    df_nikkei_select_all = []
+    df_spmini500_select_all = []
+    df_eustoxx50_select_all = []
+    
+    # for each daily date take a full 24hr session (for all indices)
+    for i,el in enumerate(days_all):
+        sd = pd.to_datetime(str(el.date()) + ' 00:00:00').tz_localize('UTC')
+        ed = pd.to_datetime(str(el.date()) + ' 23:59:59').tz_localize('UTC')
+        
+        mask_hang = (df_hk_minute.index >= sd) & (df_hk_minute.index <= ed)
+        mask_nikkei = (df_nikkei_minute.index >= sd) & (df_nikkei_minute.index <= ed)
+        mask_spmini500 = (df_spmini500_minute.index >= sd) & (df_spmini500_minute.index <= ed)
+        mask_eustoxx50 = (df_eustoxx50_minute.index >= sd) & (df_eustoxx50_minute.index <= ed)
+
+        df_hang_select = df_hk_minute.loc[mask_hang]
+        df_nikkei_select = df_nikkei_minute.loc[mask_nikkei]
+        df_spmini500_select = df_spmini500_minute.loc[mask_spmini500]
+        df_eustoxx50_select = df_eustoxx50_minute.loc[mask_eustoxx50]
+
+        df_hang_select['rate_ret'] = df_hang_select[ohlc].pct_change()
+        df_nikkei_select['rate_ret'] = df_nikkei_select[ohlc].pct_change()
+        df_spmini500_select['rate_ret'] = df_spmini500_select[ohlc].pct_change()
+        df_eustoxx50_select['rate_ret'] = df_eustoxx50_select[ohlc].pct_change()
+
+        df_hang_select.dropna(inplace=True)
+        df_nikkei_select.dropna(inplace=True)
+        df_spmini500_select.dropna(inplace=True)
+        df_eustoxx50_select.dropna(inplace=True)
+
+        df_hang_select_all.append(df_hang_select['rate_ret'].T)
+        df_nikkei_select_all.append(df_nikkei_select['rate_ret'].T)
+        df_spmini500_select_all.append(df_spmini500_select['rate_ret'].T)
+        df_eustoxx50_select_all.append(df_eustoxx50_select['rate_ret'].T)
+
+    df_res_hang = pd.DataFrame.from_dict([ Helper.adfuller_test(el.values) for el in df_hang_select_all ])
+    df_res_nikkei = pd.DataFrame.from_dict([ Helper.adfuller_test(el.values) for el in df_nikkei_select_all ])
+    df_res_spmini500 = pd.DataFrame.from_dict([ Helper.adfuller_test(el.values) for el in df_spmini500_select_all ])
+    df_res_eustoxx50 = pd.DataFrame.from_dict([ Helper.adfuller_test(el.values) for el in df_eustoxx50_select_all ])
+
+    df_res_hang['Dates'] = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in days_all ]
+    df_res_nikkei['Dates'] = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in days_all ]
+    df_res_spmini500['Dates'] = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in days_all ]
+    df_res_eustoxx50['Dates'] = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in days_all ]
+
+    print(df_res_nikkei)
+    fig_1,fig_2,fig_3,fig_4 = fig_adf(df_res_hang,df_res_nikkei,df_res_spmini500,df_res_eustoxx50)
+    adf_html_table_hang = df_to_table(df_res_hang.head())
+    adf_html_table_nikkei = df_to_table(df_res_nikkei.head())
+    adf_html_table_spmini500 = df_to_table(df_res_spmini500.head())
+    adf_html_table_eustoxx50 = df_to_table(df_res_eustoxx50.head())
+    
+    return(fig_1,fig_2,fig_3,fig_4,adf_html_table_hang,adf_html_table_nikkei,adf_html_table_spmini500,adf_html_table_eustoxx50)
    
 ####################################################################################################################################################################################
 #                                                                                            page display                                                                          # 
@@ -2481,6 +2677,8 @@ def display_page(pathname):
         return page_9_layout
     elif pathname == '/page-10':
         return page_10_layout
-
+    elif pathname == '/page-11':
+        return page_11_layout
+    
 if __name__ == '__main__':
     app.run_server(debug=True)
