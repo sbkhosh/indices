@@ -603,14 +603,11 @@ def rec_def(s, eps=0.1, steps=10):
 def rec_plot(df,index_val,ohlc):
     dates_perf = df.index
     s = df.values
-    epsilons = [0.10,0.30,0.60,0.80]
+    epsilons = [0.00005]
         
     a = [rec_def(s, eps=el) for el in epsilons]
 
-    size = 0.33
-    alignement = 0.1
-
-    fig = plt.figure(figsize=(32,16))
+    fig = plt.figure(figsize=(40,25))
     font = {
         'family': 'serif',
         'color':  'darkblue',
@@ -618,25 +615,23 @@ def rec_plot(df,index_val,ohlc):
         'size': 16,
         }
 
-    plt.suptitle(str(index_val) + ' - ' + str(ohlc))
-    ax_recurrence_0 = fig.add_axes([0.1, 0.1, 0.9, 0.9])
+    ax_recurrence_0 = fig.add_axes([0.1, 0.1, 0.8, 0.8])
     ax_recurrence_0.clear()
 
     xmin,xmax = mdates.datestr2num([str(dates_perf[0]),str(dates_perf[-1])])
     ymin,ymax = mdates.datestr2num([str(dates_perf[0]),str(dates_perf[-1])])    
 
-    xfmt = mdates.DateFormatter('%H:%M:%S')
+    xfmt = mdates.DateFormatter('%b-%d %H:%M:%S')
     ax_recurrence_0.xaxis.set_major_formatter(xfmt)
     ax_recurrence_0.yaxis.set_major_formatter(xfmt)
     
     # recurrence plots
     ax_recurrence_0.imshow(a[0], extent=[xmin,xmax,ymax,ymin], cmap='gray')
-    ax_recurrence_0.set_title("Recurrence plot - epsilon = "+str(epsilons[0]), fontdict=font)
     ax_recurrence_0.xaxis_date()
     ax_recurrence_0.yaxis_date()
 
-    # plt.tight_layout()
-
+    plt.tight_layout()
+    plt.xticks(rotation=90)
     plt.savefig('data_out/rec_plot_'+str(index_val.lower())+'_'+str(ohlc.lower())+'.pdf')
     plt.savefig('data_out/rec_plot_'+str(index_val.lower())+'_'+str(ohlc.lower())+'.png')
 

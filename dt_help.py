@@ -79,3 +79,25 @@ class Helper():
                   'State (critical values)': cmpr_t(round(r[1],4),round(r[4]['1%'],4),round(r[4]['5%'],4),round(r[4]['10%'],4)),
                   'State (p-value)': cmpr_p(round(r[1],4))}
         return(output)
+        
+    @staticmethod
+    def sampen_test(L,m,r):
+        N = len(L)
+        B = 0.0
+        A = 0.0
+
+        # Split time series and save all templates of length m
+        xmi = np.array([L[i : i + m] for i in range(N - m)])
+        xmj = np.array([L[i : i + m] for i in range(N - m + 1)])
+
+        # Save all matches minus the self-match, compute B
+        B = np.sum([np.sum(np.abs(xmii - xmj).max(axis=1) <= r) - 1 for xmii in xmi])
+
+        # Similar for computing A
+        m += 1
+        xm = np.array([L[i : i + m] for i in range(N - m + 1)])
+        A = np.sum([np.sum(np.abs(xmi - xm).max(axis=1) <= r) - 1 for xmi in xm])
+
+        output = {'SampEn': round(-np.log(A/B),4)}
+        return(output)
+        

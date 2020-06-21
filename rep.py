@@ -43,7 +43,9 @@ warnings.filterwarnings('ignore',category=FutureWarning)
 pd.options.mode.chained_assignment = None 
 register_matplotlib_converters()
 
-N_PAGES = 11
+N_PAGES = 12
+MONTH_VALUE = 7
+DAY_VALUE = 31
 
 color_1 = '#c0b8c3'
 color_2 = '#3e75cf'
@@ -100,6 +102,44 @@ options_max_cluster = [{'label': i, 'value': i} for i in range(int(max_cluster_r
 
 #####################################################################################################################################################################################
 
+def stats_dataframes(ohlc,days_all):
+    df_hang_select_all = []
+    df_nikkei_select_all = []
+    df_spmini500_select_all = []
+    df_eustoxx50_select_all = []
+    
+    # for each daily date take a full 24hr session (for all indices)
+    for i,el in enumerate(days_all):
+        sd = pd.to_datetime(str(el.date()) + ' 00:00:00').tz_localize('UTC')
+        ed = pd.to_datetime(str(el.date()) + ' 23:59:59').tz_localize('UTC')
+        
+        mask_hang = (df_hk_minute.index >= sd) & (df_hk_minute.index <= ed)
+        mask_nikkei = (df_nikkei_minute.index >= sd) & (df_nikkei_minute.index <= ed)
+        mask_spmini500 = (df_spmini500_minute.index >= sd) & (df_spmini500_minute.index <= ed)
+        mask_eustoxx50 = (df_eustoxx50_minute.index >= sd) & (df_eustoxx50_minute.index <= ed)
+
+        df_hang_select = df_hk_minute.loc[mask_hang]
+        df_nikkei_select = df_nikkei_minute.loc[mask_nikkei]
+        df_spmini500_select = df_spmini500_minute.loc[mask_spmini500]
+        df_eustoxx50_select = df_eustoxx50_minute.loc[mask_eustoxx50]
+
+        df_hang_select['rate_ret'] = df_hang_select[ohlc].pct_change()
+        df_nikkei_select['rate_ret'] = df_nikkei_select[ohlc].pct_change()
+        df_spmini500_select['rate_ret'] = df_spmini500_select[ohlc].pct_change()
+        df_eustoxx50_select['rate_ret'] = df_eustoxx50_select[ohlc].pct_change()
+
+        df_hang_select.dropna(inplace=True)
+        df_nikkei_select.dropna(inplace=True)
+        df_spmini500_select.dropna(inplace=True)
+        df_eustoxx50_select.dropna(inplace=True)
+
+        df_hang_select_all.append(df_hang_select['rate_ret'].T)
+        df_nikkei_select_all.append(df_nikkei_select['rate_ret'].T)
+        df_spmini500_select_all.append(df_spmini500_select['rate_ret'].T)
+        df_eustoxx50_select_all.append(df_eustoxx50_select['rate_ret'].T)
+        
+    return(df_hang_select_all,df_nikkei_select_all,df_spmini500_select_all,df_eustoxx50_select_all)
+    
 def cluster_draw(df_all, method, metric, max_cluster, selected_cluster, ts_space=5):
     df_res, Z, ddata, dm = clusterlib.maxclust_draw_rep(df_all.iloc[:,:], method, metric, int(max_cluster), 5)
 
@@ -120,6 +160,33 @@ def cluster_draw(df_all, method, metric, max_cluster, selected_cluster, ts_space
 
     return(encoded_image_0,df_res,encoded_image_1)
 
+def plot_recplot(filename_1,filename_2,filename_3,filename_4):
+    image_name_1 = filename_1+".png"
+    location_1 = os.getcwd() + '/' + image_name_1
+    with open('%s' %location_1, "rb") as image_file_1:
+        encoded_string_1 = base64.b64encode(image_file_1.read()).decode()
+    encoded_image_1 = "data:image/png;base64," + encoded_string_1
+
+    image_name_2 = filename_2+".png"
+    location_2 = os.getcwd() + '/' + image_name_2
+    with open('%s' %location_2, "rb") as image_file_2:
+        encoded_string_2 = base64.b64encode(image_file_2.read()).decode()
+    encoded_image_2 = "data:image/png;base64," + encoded_string_2
+
+    image_name_3 = filename_3+".png"
+    location_3 = os.getcwd() + '/' + image_name_3
+    with open('%s' %location_3, "rb") as image_file_3:
+        encoded_string_3 = base64.b64encode(image_file_3.read()).decode()
+    encoded_image_3 = "data:image/png;base64," + encoded_string_3
+
+    image_name_4 = filename_4+".png"
+    location_4 = os.getcwd() + '/' + image_name_4
+    with open('%s' %location_4, "rb") as image_file_4:
+        encoded_string_4 = base64.b64encode(image_file_4.read()).decode()
+    encoded_image_4 = "data:image/png;base64," + encoded_string_4
+    
+    return(encoded_image_1,encoded_image_2,encoded_image_3,encoded_image_4)
+    
 #####################################################################################################################################################################################
 
 def fig_vwap(df_hk,df_nk,df_sp,df_eu,index_val):
@@ -1365,7 +1432,6 @@ def fig_lag(df_hk,df_nk,df_sp,df_eu,ohlc,hours_diff):
     return(fig,lag_table)
 
 def fig_adf(df_1,df_2,df_3,df_4):
-    labels = ['Stationary','Non-Stationary']
     data_1 = [dict(
         type = 'bar',
         x = df_1['Dates'],
@@ -1436,12 +1502,84 @@ def fig_adf(df_1,df_2,df_3,df_4):
     
     return(fig_1,fig_2,fig_3,fig_4)
 
+def fig_sampen(df_1,df_2,df_3,df_4):
+    data_1 = [dict(
+        type = 'bar',
+        x = df_1['Dates'],
+        y = df_1['SampEn'],
+        name = 'Hang Seng',
+    )]
+
+    layout_1 = dict()
+    fig_1 = dict(data=data_1,layout=layout_1)
+    
+    fig_1['layout'] = dict()
+    fig_1['layout']['plot_bgcolor'] = 'rgb(250, 250, 250)'
+    fig_1['layout']['xaxis'] = {'automargin': True}
+    fig_1['layout']['yaxis'] = dict(automargin=True,title='')
+    fig_1['layout']['width'] = 1800
+    fig_1['layout']['height'] = 300
+
+    data_2 = [dict(
+        type = 'bar',
+        x = df_2['Dates'],
+        y = df_2['SampEn'],
+        name = 'Nikkei225',
+    )]
+
+    layout_2 = dict()
+    fig_2 = dict(data=data_2,layout=layout_2)
+    
+    fig_2['layout'] = dict()
+    fig_2['layout']['plot_bgcolor'] = 'rgb(250, 250, 250)'
+    fig_2['layout']['xaxis'] = {'automargin': True}
+    fig_2['layout']['yaxis'] = dict(automargin=True,title='')
+    fig_2['layout']['width'] = 1800
+    fig_2['layout']['height'] = 300
+    
+    data_3 = [dict(
+        type = 'bar',
+        x = df_3['Dates'],
+        y = df_3['SampEn'],
+        name = 'eMini SP500',
+    )]
+
+    layout_3 = dict()
+    fig_3 = dict(data=data_3,layout=layout_3)
+    
+    fig_3['layout'] = dict()
+    fig_3['layout']['plot_bgcolor'] = 'rgb(250, 250, 250)'
+    fig_3['layout']['xaxis'] = {'automargin': True}
+    fig_3['layout']['yaxis'] = dict(automargin=True,title='')
+    fig_3['layout']['width'] = 1800
+    fig_3['layout']['height'] = 300
+    
+    data_4 = [dict(
+        type = 'bar',
+        x = df_4['Dates'],
+        y = df_4['SampEn'],
+        name = 'Eurostoxx50',
+    )]
+
+    layout_4 = dict()
+    fig_4 = dict(data=data_4,layout=layout_4)
+    
+    fig_4['layout'] = dict()
+    fig_4['layout']['plot_bgcolor'] = 'rgb(250, 250, 250)'
+    fig_4['layout']['xaxis'] = {'automargin': True}
+    fig_4['layout']['yaxis'] = dict(automargin=True,title='')
+    fig_4['layout']['width'] = 1800
+    fig_4['layout']['height'] = 300
+    
+    return(fig_1,fig_2,fig_3,fig_4)
+
 ##########################################################################################################################################################################################
 #                                                                                        menu
 ##########################################################################################################################################################################################
     
 def nav_menu():
-    title_all = ["Raw plots", "Volume","H-L & Volume","H-L & Volatility","Correlations","Distribution of returns","Statistics - OHLC","VWAP","Lag effect","Clustering","Statistical tests"]
+    title_all = ["Raw plots", "Volume","H-L & Volume","H-L & Volatility","Correlations","Distribution of returns",
+                 "Statistics - OHLC","VWAP","Lag effect","Clustering","Stationarity test","Recurrence plots"]
     links_all = [ dbc.NavLink(el, href='/page-'+str(i+1), id='page-'+str(i+1)+'-link', style=STYLE_1) for i,el in enumerate(title_all) ] 
     nav = dbc.Nav(links_all,pills=True)
     return(nav)
@@ -2019,7 +2157,6 @@ def get_layout_10():
     ])
     return(html_res)
 
-
 ##########################################################################################################################################################################################
 #                                                                                        layout_11
 ##########################################################################################################################################################################################
@@ -2029,7 +2166,7 @@ def get_layout_11():
         html.Div([
             html.Div(html.H6('OHLC choice'),style=STYLE_6),
             dcc.Dropdown(
-                id='ohlc-tests',
+                id='ohlc-adf',
                 options=[{'label': i, 'value': i} for i in ['Open','High', 'Low', 'Close']],
                 value='Close',
                 style=STYLE_2
@@ -2047,7 +2184,7 @@ def get_layout_11():
               dcc.Graph(
                   id = 'adf-fig-2',
                   style=STYLE_13)
-              ]),
+              ]),\
     html.Div([
               html.Div(html.P([html.Br(),html.H2(html.B('eMiniSP500'))]), style=STYLE_8),
               dcc.Graph(
@@ -2061,21 +2198,77 @@ def get_layout_11():
                   style=STYLE_13)
               ]),
     html.Div(
+        html.Div(html.P([html.Br(),html.Br(),html.Br(),html.Br(),html.H2(html.B('Hang Seng'))]), style=STYLE_8),
         id='adf-table-1',
         className='tableDiv'
         ),
     html.Div(
+        html.Div(html.P([html.Br(),html.Br(),html.Br(),html.Br(),html.H2(html.B('Nikkei225'))]), style=STYLE_8),
         id='adf-table-2',
         className='tableDiv'
         ),
     html.Div(
+        html.Div(html.P([html.Br(),html.Br(),html.Br(),html.Br(),html.H2(html.B('eMiniSP500'))]), style=STYLE_8),
         id='adf-table-3',
         className='tableDiv'
         ),
     html.Div(
+        html.Div(html.P([html.Br(),html.Br(),html.Br(),html.Br(),html.H2(html.B('EuroStoxx50'))]), style=STYLE_8),
         id='adf-table-4',
         className='tableDiv'
         ),
+    ])
+    return(html_res)
+
+##########################################################################################################################################################################################
+#                                                                                        layout_12
+##########################################################################################################################################################################################
+def get_layout_12():
+    html_res = \
+    html.Div([
+    html.Div(html.P([html.Br(),html.Br(),html.Br(),html.Br(),html.Br(),html.Br(),html.H2(html.B('A recurrence plot gives information about the temporal correlation of phase space points. It shows for each moment i in time, the times at which a phase space trajectory visits the same area (in that phase space) as of time j'))]), style=STYLE_8),
+   html.Div([
+             html.Div(html.H6('OHLC choice'),style=STYLE_6),
+             dcc.Dropdown(
+                 id='ohlc-recplot',
+                 options=[{'label': i, 'value': i} for i in ['Open','High', 'Low', 'Close']],
+                 value='Close',
+                 style=STYLE_2
+                 ),
+                 ],style=STYLE_3),
+   html.Div([
+             html.Div(html.H6('Month value'),style=STYLE_6),
+             dcc.Dropdown(
+                 id='month-recplot',
+                 options=[{'label': i, 'value': i} for i in range(1,MONTH_VALUE)],
+                 value=1,
+                 style=STYLE_2
+                 ),
+                 ],style=STYLE_3),
+    html.Div([
+              html.Div(html.P([html.Br(),html.Br(),html.Br(),html.Br(),html.H2(html.B('Hang Seng'))]), style=STYLE_8),
+              html.Img(id = 'recplot-fig-1',
+                       src = '',
+                       style=STYLE_4)
+              ]),
+    html.Div([
+              html.Div(html.P([html.Br(),html.H2(html.B('Nikkei225'))]), style=STYLE_8),
+              html.Img(id = 'recplot-fig-2',
+                       src = '',
+                       style=STYLE_4)
+              ]),
+    html.Div([
+              html.Div(html.P([html.Br(),html.H2(html.B('eMiniSP500'))]), style=STYLE_8),
+              html.Img(id = 'recplot-fig-3',
+                       src = '',
+                       style=STYLE_4)
+              ]),
+    html.Div([
+              html.Div(html.P([html.Br(),html.H2(html.B('EuroStoxx50'))]), style=STYLE_8),
+              html.Img(id = 'recplot-fig-4',
+                       src = '',
+                       style=STYLE_4)
+              ]),
     ])
     return(html_res)
     
@@ -2592,45 +2785,11 @@ page_11_layout = html.Div([ get_layout_11() ])
                Output('adf-table-2', 'children'),
                Output('adf-table-3', 'children'),
                Output('adf-table-4', 'children')],
-              [Input("ohlc-tests", "value")]
+              [Input("ohlc-adf", "value")]
 )
 def update_fig_11(ohlc):
     days_all = all_common_dates()
-    
-    df_hang_select_all = []
-    df_nikkei_select_all = []
-    df_spmini500_select_all = []
-    df_eustoxx50_select_all = []
-    
-    # for each daily date take a full 24hr session (for all indices)
-    for i,el in enumerate(days_all):
-        sd = pd.to_datetime(str(el.date()) + ' 00:00:00').tz_localize('UTC')
-        ed = pd.to_datetime(str(el.date()) + ' 23:59:59').tz_localize('UTC')
-        
-        mask_hang = (df_hk_minute.index >= sd) & (df_hk_minute.index <= ed)
-        mask_nikkei = (df_nikkei_minute.index >= sd) & (df_nikkei_minute.index <= ed)
-        mask_spmini500 = (df_spmini500_minute.index >= sd) & (df_spmini500_minute.index <= ed)
-        mask_eustoxx50 = (df_eustoxx50_minute.index >= sd) & (df_eustoxx50_minute.index <= ed)
-
-        df_hang_select = df_hk_minute.loc[mask_hang]
-        df_nikkei_select = df_nikkei_minute.loc[mask_nikkei]
-        df_spmini500_select = df_spmini500_minute.loc[mask_spmini500]
-        df_eustoxx50_select = df_eustoxx50_minute.loc[mask_eustoxx50]
-
-        df_hang_select['rate_ret'] = df_hang_select[ohlc].pct_change()
-        df_nikkei_select['rate_ret'] = df_nikkei_select[ohlc].pct_change()
-        df_spmini500_select['rate_ret'] = df_spmini500_select[ohlc].pct_change()
-        df_eustoxx50_select['rate_ret'] = df_eustoxx50_select[ohlc].pct_change()
-
-        df_hang_select.dropna(inplace=True)
-        df_nikkei_select.dropna(inplace=True)
-        df_spmini500_select.dropna(inplace=True)
-        df_eustoxx50_select.dropna(inplace=True)
-
-        df_hang_select_all.append(df_hang_select['rate_ret'].T)
-        df_nikkei_select_all.append(df_nikkei_select['rate_ret'].T)
-        df_spmini500_select_all.append(df_spmini500_select['rate_ret'].T)
-        df_eustoxx50_select_all.append(df_eustoxx50_select['rate_ret'].T)
+    df_hang_select_all,df_nikkei_select_all,df_spmini500_select_all,df_eustoxx50_select_all = stats_dataframes(ohlc,days_all)
 
     df_res_hang = pd.DataFrame.from_dict([ Helper.adfuller_test(el.values) for el in df_hang_select_all ])
     df_res_nikkei = pd.DataFrame.from_dict([ Helper.adfuller_test(el.values) for el in df_nikkei_select_all ])
@@ -2642,7 +2801,6 @@ def update_fig_11(ohlc):
     df_res_spmini500['Dates'] = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in days_all ]
     df_res_eustoxx50['Dates'] = [ "{:02d}"'-'"{:02d}"'-'"{:02d}".format(el.year,el.month,el.day) for el in days_all ]
 
-    print(df_res_nikkei)
     fig_1,fig_2,fig_3,fig_4 = fig_adf(df_res_hang,df_res_nikkei,df_res_spmini500,df_res_eustoxx50)
     adf_html_table_hang = df_to_table(df_res_hang.head())
     adf_html_table_nikkei = df_to_table(df_res_nikkei.head())
@@ -2650,7 +2808,56 @@ def update_fig_11(ohlc):
     adf_html_table_eustoxx50 = df_to_table(df_res_eustoxx50.head())
     
     return(fig_1,fig_2,fig_3,fig_4,adf_html_table_hang,adf_html_table_nikkei,adf_html_table_spmini500,adf_html_table_eustoxx50)
-   
+
+##########################################################################################################################################################################################
+#                                                                                        page_12
+##########################################################################################################################################################################################
+page_12_layout = html.Div([ get_layout_12() ])
+
+@app.callback([Output('recplot-fig-1', 'src'),
+               Output('recplot-fig-2', 'src'),
+               Output('recplot-fig-3', 'src'),
+               Output('recplot-fig-4', 'src')],
+              [Input("ohlc-recplot", "value"),
+               Input("month-recplot", "value")]
+)
+def update_fig_12(ohlc,month_val):
+    days_all = all_common_dates()
+    df_hang_select_all,df_nikkei_select_all,df_spmini500_select_all,df_eustoxx50_select_all = stats_dataframes(ohlc,days_all)
+
+    df_hang_merge = pd.concat(df_hang_select_all,axis=0).to_frame()
+    df_nikkei_merge = pd.concat(df_nikkei_select_all,axis=0).to_frame()
+    df_spmini500_merge = pd.concat(df_spmini500_select_all,axis=0).to_frame()
+    df_eustoxx50_merge = pd.concat(df_eustoxx50_select_all,axis=0).to_frame()
+
+    df_hang_merge['month'] = [ el.date().month for el in df_hang_merge.index ]
+    df_nikkei_merge['month'] = [ el.date().month for el in df_nikkei_merge.index ]
+    df_spmini500_merge['month'] = [ el.date().month for el in df_spmini500_merge.index ]
+    df_eustoxx50_merge['month'] = [ el.date().month for el in df_eustoxx50_merge.index ]
+    
+    df_hang_merge['day'] = [ el.date().day for el in df_hang_merge.index ]
+    df_nikkei_merge['day'] = [ el.date().day for el in df_nikkei_merge.index ]
+    df_spmini500_merge['day'] = [ el.date().day for el in df_spmini500_merge.index ]
+    df_eustoxx50_merge['day'] = [ el.date().day for el in df_eustoxx50_merge.index]
+
+    df_hang_merge = df_hang_merge[(df_hang_merge['month']==month_val)]
+    df_nikkei_merge = df_nikkei_merge[(df_nikkei_merge['month']==month_val)]
+    df_spmini500_merge = df_spmini500_merge[(df_spmini500_merge['month']==month_val)]
+    df_eustoxx50_merge = df_eustoxx50_merge[(df_eustoxx50_merge['month']==month_val)]
+
+    clusterlib.rec_plot(df_hang_merge['rate_ret'],'HangSeng',ohlc)
+    clusterlib.rec_plot(df_nikkei_merge['rate_ret'],'Nikkei225',ohlc)
+    clusterlib.rec_plot(df_spmini500_merge['rate_ret'],'eMiniSP500',ohlc)
+    clusterlib.rec_plot(df_eustoxx50_merge['rate_ret'],'EuroStoxx50',ohlc)
+
+    filename_1 = 'data_out/rec_plot_'+str('HangSeng'.lower())+'_'+str(ohlc.lower())
+    filename_2 = 'data_out/rec_plot_'+str('Nikkei225'.lower())+'_'+str(ohlc.lower())
+    filename_3 = 'data_out/rec_plot_'+str('eMiniSP500'.lower())+'_'+str(ohlc.lower())
+    filename_4 = 'data_out/rec_plot_'+str('EuroStoxx50'.lower())+'_'+str(ohlc.lower())
+
+    encoded_image_1, encoded_image_2, encoded_image_3, encoded_image_4 = plot_recplot(filename_1,filename_2,filename_3,filename_4)
+    return(encoded_image_1, encoded_image_2, encoded_image_3, encoded_image_4)
+    
 ####################################################################################################################################################################################
 #                                                                                            page display                                                                          # 
 ####################################################################################################################################################################################
@@ -2679,6 +2886,8 @@ def display_page(pathname):
         return page_10_layout
     elif pathname == '/page-11':
         return page_11_layout
+    elif pathname == '/page-12':
+        return page_12_layout
     
 if __name__ == '__main__':
     app.run_server(debug=True)
