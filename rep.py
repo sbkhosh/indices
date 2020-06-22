@@ -2759,7 +2759,7 @@ def update_fig_10(index_val,ohlc,method,metric,max_cluster,selected_cluster):
     df_nikkei_merge.columns = ["{:02d}"'-'"{:02d}".format(el.month,el.day)  for el in days_all ]
     df_spmini500_merge.columns = ["{:02d}"'-'"{:02d}".format(el.month,el.day)  for el in days_all ]
     df_eustoxx50_merge.columns = ["{:02d}"'-'"{:02d}".format(el.month,el.day)  for el in days_all ]
-    
+
     if(index_val == 'Hang Seng'):
         encoded_image_0, df_res, encoded_image_1 = cluster_draw(df_hang_merge.T, method, metric, max_cluster, selected_cluster, 5)
     elif(index_val == 'Nikkei225'):
