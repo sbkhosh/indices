@@ -139,6 +139,39 @@ def stats_dataframes(ohlc,days_all):
         df_eustoxx50_select_all.append(df_eustoxx50_select['rate_ret'].T)
         
     return(df_hang_select_all,df_nikkei_select_all,df_spmini500_select_all,df_eustoxx50_select_all)
+
+def stats_dataframes_ohlc(ohlc,days_all):
+    df_hang_select_all = []
+    df_nikkei_select_all = []
+    df_spmini500_select_all = []
+    df_eustoxx50_select_all = []
+    
+    # for each daily date take a full 24hr session (for all indices)
+    for i,el in enumerate(days_all):
+        sd = pd.to_datetime(str(el.date()) + ' 00:00:00').tz_localize('UTC')
+        ed = pd.to_datetime(str(el.date()) + ' 23:59:59').tz_localize('UTC')
+        
+        mask_hang = (df_hk_minute.index >= sd) & (df_hk_minute.index <= ed)
+        mask_nikkei = (df_nikkei_minute.index >= sd) & (df_nikkei_minute.index <= ed)
+        mask_spmini500 = (df_spmini500_minute.index >= sd) & (df_spmini500_minute.index <= ed)
+        mask_eustoxx50 = (df_eustoxx50_minute.index >= sd) & (df_eustoxx50_minute.index <= ed)
+
+        df_hang_select = df_hk_minute.loc[mask_hang]
+        df_nikkei_select = df_nikkei_minute.loc[mask_nikkei]
+        df_spmini500_select = df_spmini500_minute.loc[mask_spmini500]
+        df_eustoxx50_select = df_eustoxx50_minute.loc[mask_eustoxx50]
+
+        df_hang_select['norm'] = (df_hang_select[ohlc].values - np.mean(df_hang_select[ohlc].values)) / np.max(df_hang_select[ohlc].values)
+        df_nikkei_select['norm'] = (df_nikkei_select[ohlc].values - np.mean(df_nikkei_select[ohlc].values)) / np.max(df_nikkei_select[ohlc].values)
+        df_spmini500_select['norm'] = (df_spmini500_select[ohlc].values - np.mean(df_spmini500_select[ohlc].values)) / np.max(df_spmini500_select[ohlc].values)  
+        df_eustoxx50_select['norm'] = (df_eustoxx50_select[ohlc].values - np.mean(df_eustoxx50_select[ohlc].values)) / np.max(df_eustoxx50_select[ohlc].values) 
+        
+        df_hang_select_all.append(df_hang_select)
+        df_nikkei_select_all.append(df_nikkei_select)
+        df_spmini500_select_all.append(df_spmini500_select)
+        df_eustoxx50_select_all.append(df_eustoxx50_select)
+        
+    return(df_hang_select_all,df_nikkei_select_all,df_spmini500_select_all,df_eustoxx50_select_all)
     
 def cluster_draw(df_all, method, metric, max_cluster, selected_cluster, ts_space=5):
     df_res, Z, ddata, dm = clusterlib.maxclust_draw_rep(df_all.iloc[:,:], method, metric, int(max_cluster), 5)
@@ -2823,12 +2856,12 @@ page_12_layout = html.Div([ get_layout_12() ])
 )
 def update_fig_12(ohlc,month_val):
     days_all = all_common_dates()
-    df_hang_select_all,df_nikkei_select_all,df_spmini500_select_all,df_eustoxx50_select_all = stats_dataframes(ohlc,days_all)
+    df_hang_select_all,df_nikkei_select_all,df_spmini500_select_all,df_eustoxx50_select_all = stats_dataframes_ohlc(ohlc,days_all)
 
-    df_hang_merge = pd.concat(df_hang_select_all,axis=0).to_frame()
-    df_nikkei_merge = pd.concat(df_nikkei_select_all,axis=0).to_frame()
-    df_spmini500_merge = pd.concat(df_spmini500_select_all,axis=0).to_frame()
-    df_eustoxx50_merge = pd.concat(df_eustoxx50_select_all,axis=0).to_frame()
+    df_hang_merge = pd.concat(df_hang_select_all,axis=0) # .to_frame()
+    df_nikkei_merge = pd.concat(df_nikkei_select_all,axis=0) # .to_frame()
+    df_spmini500_merge = pd.concat(df_spmini500_select_all,axis=0) # .to_frame()
+    df_eustoxx50_merge = pd.concat(df_eustoxx50_select_all,axis=0) # .to_frame()
 
     df_hang_merge['month'] = [ el.date().month for el in df_hang_merge.index ]
     df_nikkei_merge['month'] = [ el.date().month for el in df_nikkei_merge.index ]
@@ -2845,10 +2878,10 @@ def update_fig_12(ohlc,month_val):
     df_spmini500_merge = df_spmini500_merge[(df_spmini500_merge['month']==month_val)]
     df_eustoxx50_merge = df_eustoxx50_merge[(df_eustoxx50_merge['month']==month_val)]
 
-    clusterlib.rec_plot(df_hang_merge['rate_ret'],'HangSeng',ohlc)
-    clusterlib.rec_plot(df_nikkei_merge['rate_ret'],'Nikkei225',ohlc)
-    clusterlib.rec_plot(df_spmini500_merge['rate_ret'],'eMiniSP500',ohlc)
-    clusterlib.rec_plot(df_eustoxx50_merge['rate_ret'],'EuroStoxx50',ohlc)
+    clusterlib.rec_plot(df_hang_merge[ohlc],'HangSeng',ohlc)
+    clusterlib.rec_plot(df_nikkei_merge[ohlc],'Nikkei225',ohlc)
+    clusterlib.rec_plot(df_spmini500_merge[ohlc],'eMiniSP500',ohlc)
+    clusterlib.rec_plot(df_eustoxx50_merge[ohlc],'EuroStoxx50',ohlc)
 
     filename_1 = 'data_out/rec_plot_'+str('HangSeng'.lower())+'_'+str(ohlc.lower())
     filename_2 = 'data_out/rec_plot_'+str('Nikkei225'.lower())+'_'+str(ohlc.lower())

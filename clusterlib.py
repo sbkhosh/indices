@@ -603,7 +603,7 @@ def rec_def(s, eps=0.1, steps=10):
 def rec_plot(df,index_val,ohlc):
     dates_perf = df.index
     s = df.values
-    epsilons = [0.00005]
+    epsilons = [1.0]
         
     a = [rec_def(s, eps=el) for el in epsilons]
 
