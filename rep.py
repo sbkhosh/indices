@@ -1220,7 +1220,7 @@ def table_stats_ohlc(df_hk,df_nk,df_sp,df_eu,ohlc):
 
     df_all = pd.concat(stats_all,axis=0,ignore_index=True)
     return(df_all)
-
+    
 #####################################################################################################################################################################################
     
 def get_all_first_last(df_hk,df_nk,df_sp,df_eu,ohlc,hours_diff):
@@ -1238,13 +1238,22 @@ def get_all_first_last(df_hk,df_nk,df_sp,df_eu,ohlc,hours_diff):
     
     # for each daily date take a full 24hr session (for all indices)
     for i,el in enumerate(days_all):
-        sd = pd.to_datetime(str(el.date()) + ' 00:00:00').tz_localize('UTC')
-        ed = pd.to_datetime(str(el.date()) + ' 23:59:59').tz_localize('UTC')
+        sd_hang = pd.to_datetime(str(el.date()) + ' 01:45:00').tz_localize('UTC')
+        ed_hang = pd.to_datetime(str(el.date()) + ' 08:00:00').tz_localize('UTC')
+
+        sd_nikkei = pd.to_datetime(str(el.date()) + ' 00:00:00').tz_localize('UTC')
+        ed_nikkei = pd.to_datetime(str(el.date()) + ' 06:00:00').tz_localize('UTC')
+
+        sd_spmini500 = pd.to_datetime(str(el.date()) + ' 13:30:00').tz_localize('UTC')
+        ed_spmini500 = pd.to_datetime(str(el.date()) + ' 20:00:00').tz_localize('UTC')
+
+        sd_eustoxx50 = pd.to_datetime(str(el.date()) + ' 07:00:00').tz_localize('UTC')
+        ed_eustoxx50 = pd.to_datetime(str(el.date()) + ' 15:30:00').tz_localize('UTC')
         
-        mask_hang = (df_hk.index >= sd) & (df_hk.index <= ed)
-        mask_nikkei = (df_nk.index >= sd) & (df_nk.index <= ed)
-        mask_spmini500 = (df_sp.index >= sd) & (df_sp.index <= ed)
-        mask_eustoxx50 = (df_eu.index >= sd) & (df_eu.index <= ed)
+        mask_hang = (df_hk.index >= sd_hang) & (df_hk.index <= ed_hang)
+        mask_nikkei = (df_nk.index >= sd_nikkei) & (df_nk.index <= ed_nikkei)
+        mask_spmini500 = (df_sp.index >= sd_spmini500) & (df_sp.index <= ed_spmini500)
+        mask_eustoxx50 = (df_eu.index >= sd_eustoxx50) & (df_eu.index <= ed_eustoxx50)
 
         df_hang_select = df_hk.loc[mask_hang]
         df_nikkei_select = df_nk.loc[mask_nikkei]
