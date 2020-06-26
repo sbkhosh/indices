@@ -7,7 +7,6 @@ import string
 import yaml
 
 from dt_help import Helper
-from yahoofinancials import YahooFinancials
 
 class DataProcessor():
     def __init__(self, input_directory, output_directory, input_prm_file):

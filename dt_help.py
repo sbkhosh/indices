@@ -2,15 +2,9 @@
 
 import csv
 import inspect
-import matplotlib
-import matplotlib.dates as mdates
-import matplotlib.pyplot as plt
 import numpy as np
 import os
-import pandas as pd
-import plotly.graph_objects as go
 import statsmodels.tsa.stattools as ts
-import ta
 import time
 import yaml
 
