@@ -4,6 +4,7 @@ import csv
 import inspect
 import numpy as np
 import os
+import statsmodels.api as sm
 import statsmodels.tsa.stattools as ts
 import time
 import yaml
@@ -61,37 +62,20 @@ class Helper():
     @staticmethod
     def view_data(data):
         print(data.head())
-
+        
     @staticmethod
     def adfuller_test(series):
-        cmpr_t = lambda t, ctr_1, ctr_2, ctr_3: 'Stationary' if (t <= ctr_1, t <= ctr_2, t <= ctr_3) else 'Non-stationary'
-        cmpr_p = lambda p: 'Stationary' if (p < 0.01) else 'Non-stationary'
+        output = {}
+        cmpr_t = lambda t, ctr: 'Stationary' if (t < ctr) else 'Non-stationary'
+        cmpr_p = lambda p: 'Stationary' if (p < 0.05) else 'Non-stationary'
         
-        r = ts.adfuller(series,autolag='AIC')
-        output = {'test_statistic': round(r[0],4), 'pvalue': round(r[1],4), 'n_lags': round(r[2],4), 'n_obs': r[3],
-                  'Critical value (1%)': round(r[4]['1%'],4), 'Critical value (5%)': round(r[4]['5%'],4), 'Critical value (10%)': round(r[4]['10%'],4),
-                  'State (critical values)': cmpr_t(round(r[1],4),round(r[4]['1%'],4),round(r[4]['5%'],4),round(r[4]['10%'],4)),
-                  'State (p-value)': cmpr_p(round(r[1],4))}
+        r = sm.tsa.stattools.adfuller(series,autolag='AIC')
+        output = {'ADF test_statistic': round(r[0],4), 'p-value': round(r[1],4), 'n_lags': round(r[2],4), 'n_obs': r[3],
+                  'Critical value (1%)': round(r[4]['1%'],4),
+                  'Critical value (5%)': round(r[4]['5%'],4),
+                  'Critical value (10%)': round(r[4]['10%'],4),
+                  'Stationary (1%)': cmpr_t(round(r[0],4),round(r[4]['1%'],4)),
+                  'Stationary (5%)': cmpr_t(round(r[0],4),round(r[4]['5%'],4)),
+                  'Stationary (10%)': cmpr_t(round(r[0],4),round(r[4]['10%'],4)),
+                  'Stationary (p-value)': cmpr_p(round(r[1],4))}
         return(output)
-        
-    @staticmethod
-    def sampen_test(L,m,r):
-        N = len(L)
-        B = 0.0
-        A = 0.0
-
-        # Split time series and save all templates of length m
-        xmi = np.array([L[i : i + m] for i in range(N - m)])
-        xmj = np.array([L[i : i + m] for i in range(N - m + 1)])
-
-        # Save all matches minus the self-match, compute B
-        B = np.sum([np.sum(np.abs(xmii - xmj).max(axis=1) <= r) - 1 for xmii in xmi])
-
-        # Similar for computing A
-        m += 1
-        xm = np.array([L[i : i + m] for i in range(N - m + 1)])
-        A = np.sum([np.sum(np.abs(xmi - xm).max(axis=1) <= r) - 1 for xmi in xm])
-
-        output = {'SampEn': round(-np.log(A/B),4)}
-        return(output)
-        

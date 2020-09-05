@@ -32,6 +32,7 @@ from dash.exceptions import PreventUpdate
 from datetime import datetime, timedelta
 from dt_help import Helper
 from dt_read import DataProcessor
+from jupyter_dash import JupyterDash
 from pandas.plotting import register_matplotlib_converters
 from plotly.subplots import make_subplots
 from scipy import stats
@@ -854,7 +855,7 @@ def nav_menu():
 # core of the app #
 ###################
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-app = dash.Dash(__name__,external_stylesheets=[dbc.themes.BOOTSTRAP],meta_tags=[{"content": "width=device-width"}])
+app = JupyterDash(__name__)
 app.config.suppress_callback_exceptions = True
 app.layout = html.Div([
     html.Div([
@@ -1458,4 +1459,7 @@ def display_page(pathname):
         return page_8_layout
     
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    # after running the app from the notebook in jupyter
+    # it is sufficient to click on the generated link
+    # this will open the app on an external web page
+    app.run_server(mode='external')
