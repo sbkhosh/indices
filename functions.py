@@ -142,7 +142,7 @@ def plot_recplot(filename_1,filename_2,filename_3,filename_4):
 def df_to_table(df):
     return(dbc.Table.from_dataframe(df,
                                     bordered=True,
-                                    dark=False,
+                                    dark=True,
                                     hover=True,
                                     responsive=True,
                                     striped=True))
@@ -1053,4 +1053,32 @@ def fig_sampen(df_1,df_2,df_3,df_4):
     
     return(fig_1,fig_2,fig_3,fig_4)
 
-    
+def msno_plot(df,index):
+    msno.matrix(df)
+    # plt.tight_layout()
+    filename = 'data_out/msno_plot_'+str(index)+'.png'
+    plt.savefig(filename)
+
+    image_name = filename
+    location = os.getcwd() + '/' + image_name
+    with open('%s' %location, "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode()
+    encoded_image = "data:image/png;base64," + encoded_string
+    return(encoded_image)
+
+def missing_values_table(dff):
+    res = round((dff.isnull().sum() * 100/ len(dff)),2).sort_values(ascending=False)
+    df_res = pd.DataFrame()
+    df_res['Variable'] = res.index
+    df_res['Total number of samples'] = len(dff)
+    df_res['Percentage of missing values'] = res.values
+    df_res['Number of missing values'] = len(dff) * df_res['Percentage of missing values'] // 100.0
+    df_res = df_res[df_res['Percentage of missing values'] > 0.0]
+    return(df_res)
+
+def image_encoding(filename):
+    location = os.getcwd() + '/' + filename
+    with open('%s' %location, "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode()
+    encoded_image = "data:image/png;base64," + encoded_string
+    return(encoded_image)

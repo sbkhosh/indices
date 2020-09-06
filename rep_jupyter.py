@@ -57,7 +57,7 @@ hk_minute_dates,nikkei_minute_dates,spmini_minute_dates,eu_minute_dates,vix_minu
 cut_cluster, cut_cluster_num, max_cluster_rep = functions.get_conf_helper()
 options_max_cluster = [{'label': i, 'value': i} for i in range(int(max_cluster_rep))]
 
-def get_df_choice(freq,index_val,wnd):
+def get_df_choice(freq,index_val):
     if(freq == 'daily' and index_val=='HangSeng'):
         df = df_hk_daily
     elif(freq == 'daily' and index_val == 'Nikkei225'):
@@ -612,7 +612,7 @@ def get_layout_5():
     html_res = \
     html.Div([
               html.Div([
-                        html.Div(html.P([html.Br(),html.H2(html.B('Analysis of lag dependency between indices'))]), style=styles.STYLE_8)]),
+                        html.Div(html.P([html.Br(),html.H2(html.B('Analysis of lag dependency between indices. Here we want to see how the different indices performance are related to each other, i.e. how the performance in terms of cumulative return on the first/last N hours of one index is related to the first/last N hours performance of another one. This comparison is performed for each day during more than a 6 months period with 15min sampled data.'))]), style=styles.STYLE_8)]),
               html.Div([
                         html.Div([
                                   html.Div(html.H3('OHLC Choice'),style=styles.STYLE_6),
@@ -637,6 +637,8 @@ def get_layout_5():
                                       id = 'lag-fig',
                                       style=styles.STYLE_4)
                                       ]),
+              html.Div([
+                        html.Div(html.P([html.Br(),html.Br(),html.Br(),html.H2(html.B('The below table shows for each index pair (and their corresponding first/last N hours), how many times they have been in same or opposite direction. In average there are as many opposite as same movements in terms of directions.'))]), style=styles.STYLE_8)]),
                         html.Div([
                                   html.Div(
                                       id='lag-table',
@@ -841,12 +843,57 @@ def get_layout_8():
     return(html_res)
 
 ##########################################################################################################################################################################################
+#                                                                                        layout_9
+##########################################################################################################################################################################################
+def get_layout_9():
+    html_res = \
+    html.Div([
+              html.Div([
+                        html.Div([
+                                  html.Div(html.H4('Frequency'),style=styles.STYLE_6),
+                                  dcc.Dropdown(
+                                      id='msno-freq',
+                                      options=[{'label': i, 'value': i} for i in ['daily','15min']],
+                                      value='15min',
+                                      style=styles.STYLE_2
+                                      )
+                                      ],style=styles.STYLE_9),
+                        html.Div([
+                                  html.Div(html.H4('Index choice'),style=styles.STYLE_6),
+                                  dcc.Dropdown(
+                                      id='msno-index',
+                                      options=[{'label': i, 'value': i} for i in ['Nikkei225','HangSeng','eMiniSP500','EuroStoxx50','VIX']],
+                                      value='Nikkei225',
+                                      style=styles.STYLE_2
+                                      )
+                                      ],style=styles.STYLE_9),
+                        html.Div(html.P([html.Br(),html.Br(),html.Br(),html.Br(),html.Br(),html.Br(),html.Br(),html.Br(),html.H2(html.B('For the selected index and frequency we first look if there are missing values and if any their distribution.'))]), style=styles.STYLE_8)]),
+              html.Div([
+              html.Div([
+                        html.Div(html.P([html.Br(),html.H3(html.B('Missing values for index'))]), style=styles.STYLE_8)]),
+                        html.Div([
+                                  html.Div(
+                                      id='msno-info-index',
+                                      className='tableDiv'
+                                      )
+                                  ],style=styles.STYLE_4),
+              html.Div([
+                        html.Div([
+                                  html.Div(html.P([html.Br(),html.H3(html.B('Missing values representation using missingno module.'))]), style=styles.STYLE_8)
+                                  ]),
+                        html.Img(id = 'msno-fig-index', src = '',style=styles.STYLE_4)
+                        ]),
+            ])
+    ])
+    return(html_res)
+
+##########################################################################################################################################################################################
 #                                                                                        menu
 ##########################################################################################################################################################################################
     
 def nav_menu():
-    title_all = ["Raw plots", "Correlations","Distribution of returns",
-                 "Statistics - OHLC","Lag effect","Clustering","Stationarity test","Recurrence plots"]
+    title_all = ["Raw plots", "Correlations","Distribution of returns","Statistics - OHLC","Lag effect",
+                 "Clustering","Stationarity test","Recurrence plots", "Missing values"]
     links_all = [ dbc.NavLink(el, href='/page-'+str(i+1), id='page-'+str(i+1)+'-link', style=styles.STYLE_1) for i,el in enumerate(title_all) ] 
     nav = dbc.Nav(links_all,pills=True)
     return(nav)
@@ -964,8 +1011,7 @@ page_1_layout = html.Div([ get_layout_1() ])
                Input('ohlc-dd-mvavg', 'value'),],
 )
 def update_fig_1(freq,index_val,wnd):
-    df = get_df_choice(freq,index_val,wnd)
-
+    df = get_df_choice(freq,index_val)
     fig = functions.fig_raw_plot(df,freq,index_val,wnd)
     return(fig)
 
@@ -1434,7 +1480,23 @@ def update_fig_8(ohlc,month_val):
 
     encoded_image_1, encoded_image_2, encoded_image_3, encoded_image_4 = functions.plot_recplot(filename_1,filename_2,filename_3,filename_4)
     return(encoded_image_1, encoded_image_2, encoded_image_3, encoded_image_4)
-    
+
+##########################################################################################################################################################################################
+#                                                                                        page_9
+##########################################################################################################################################################################################
+page_9_layout = html.Div([ get_layout_9() ])
+@app.callback(
+    [Output('msno-info-index', 'children'),
+     Output('msno-fig-index', 'src')],
+    [Input('msno-freq', 'value'),
+     Input('msno-index', 'value')]
+)
+def update_page_9(freq,index_val):
+    df = get_df_choice(freq,index_val)
+    df_info_index = functions.df_to_table(functions.missing_values_table(df))
+    msno_index = functions.msno_plot(df,index_val)
+    return(df_info_index,msno_index)
+
 ####################################################################################################################################################################################
 #                                                                                            page display                                                                          # 
 ####################################################################################################################################################################################
@@ -1457,9 +1519,8 @@ def display_page(pathname):
         return page_7_layout
     elif pathname == '/page-8':
         return page_8_layout
+    elif pathname == '/page-9':
+        return page_9_layout
     
 if __name__ == '__main__':
-    # after running the app from the notebook in jupyter
-    # it is sufficient to click on the generated link
-    # this will open the app on an external web page
-    app.run_server(mode='external')
+    app.run_server(debug=True)
